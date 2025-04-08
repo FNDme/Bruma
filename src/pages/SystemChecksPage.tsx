@@ -3,9 +3,16 @@ import { useSystemChecks } from "../contexts/SystemChecksContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SystemCheckItem } from "@/components/SystemCheckItem";
+import { UserInfoForm } from "@/components/UserInfoForm";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@radix-ui/react-collapsible";
+import { useState } from "react";
 
 export default function SystemChecksPage() {
   const {
@@ -15,6 +22,8 @@ export default function SystemChecksPage() {
   } = useDevice();
   const { checks, isRunning, runChecks, resetChecks, timeTaken } =
     useSystemChecks();
+
+  const [isReportSettingsOpen, setIsReportSettingsOpen] = useState(false);
 
   return (
     <div className="container mx-auto p-4 max-w-4xl space-y-4">
@@ -55,7 +64,27 @@ export default function SystemChecksPage() {
           <CardTitle>Report</CardTitle>
         </CardHeader>
         <CardContent>
-          <p>Report</p>
+          <Collapsible
+            open={isReportSettingsOpen}
+            onOpenChange={setIsReportSettingsOpen}
+          >
+            <div className="flex justify-between items-center">
+              <Button variant="outline">Send Report</Button>
+              <CollapsibleTrigger className="cursor-pointer flex items-center gap-2">
+                Report settings
+                {isReportSettingsOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </CollapsibleTrigger>
+            </div>
+            <CollapsibleContent>
+              <div className="pt-8">
+                <UserInfoForm />
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </CardContent>
       </Card>
 
