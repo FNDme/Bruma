@@ -172,8 +172,13 @@ pub async fn check_screen_lock() -> Option<u32> {
     let result = String::from_utf8_lossy(&output.stdout);
     let settings: serde_json::Value = serde_json::from_str(&result).ok()?;
     
-    let ac_timeout = u32::from_str_radix(settings["AC"].as_str()?, 16).ok()?;
-    let dc_timeout = u32::from_str_radix(settings["DC"].as_str()?, 16).ok()?;
+    let parse_hex = |s: &str| -> Option<u32> {
+        let hex_str = if s.starts_with("0x") { &s[2..] } else { s };
+        u32::from_str_radix(hex_str, 16).ok()
+    };
+
+    let ac_timeout = parse_hex(settings["AC"].as_str()?)?;
+    let dc_timeout = parse_hex(settings["DC"].as_str()?)?;
     let has_battery = settings["HasBattery"].as_bool()?;
 
     let timeout = if has_battery {
