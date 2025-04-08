@@ -74,7 +74,7 @@ export function Layout({ children }: LayoutProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8"
+              className="h-9 w-9"
               onClick={() => setIsCollapsed(!isCollapsed)}
             >
               {isCollapsed ? (
