@@ -24,7 +24,7 @@ interface SystemChecksContextType {
   resetChecks: () => void;
 }
 
-const initialChecks: SystemCheck[] = [
+const securityChecks: (Omit<SystemCheck, "status"> & { cmd: string })[] = [
   {
     id: "antivirus",
     name: "Antivirus Check",
@@ -33,8 +33,8 @@ const initialChecks: SystemCheck[] = [
       `Antivirus is installed and running: ${result || "N/A"}`,
     errorMessage: (error?: string) =>
       `Antivirus check failed: ${error || "N/A"}`,
-    status: "pending",
     icon: <ShieldCheck className="h-5 w-5" />,
+    cmd: "get_antivirus_info",
   },
   {
     id: "disk-encryption",
@@ -44,8 +44,8 @@ const initialChecks: SystemCheck[] = [
       `Disk encryption is enabled: ${result || "N/A"}`,
     errorMessage: (error?: string) =>
       `Disk encryption check failed: ${error || "N/A"}`,
-    status: "pending",
     icon: <HardDrive className="h-5 w-5" />,
+    cmd: "get_disk_encryption_info",
   },
   {
     id: "lock-screen",
@@ -55,10 +55,15 @@ const initialChecks: SystemCheck[] = [
       `Lock screen is enabled: ${result ? `${result} minutes` : "N/A"}`,
     errorMessage: (error?: string) =>
       `Lock screen check failed: ${error || "N/A"}`,
-    status: "pending",
     icon: <Wallpaper className="h-5 w-5" />,
+    cmd: "get_screen_lock_info",
   },
 ];
+
+const initialChecks: SystemCheck[] = securityChecks.map((check) => ({
+  ...check,
+  status: "pending",
+}));
 
 const SystemChecksContext = createContext<SystemChecksContextType | undefined>(
   undefined
@@ -74,52 +79,21 @@ export function SystemChecksProvider({ children }: { children: ReactNode }) {
     setChecks(initialChecks.map((check) => ({ ...check, status: "running" })));
     const startTime = Date.now();
     await Promise.all([
-      invoke("get_antivirus_info").then((antivirus: unknown) => {
-        setChecks((prevChecks) => {
-          const newChecks = [...prevChecks];
-          const antivirusCheck = newChecks.findIndex(
-            (check) => check.id === "antivirus"
-          );
-          newChecks[antivirusCheck] = {
-            ...newChecks[antivirusCheck],
-            status: !!antivirus ? "completed" : "failed",
-            result: antivirus as string,
-            error: antivirus ? undefined : "Antivirus not installed",
-          };
-          return newChecks;
-        });
-      }),
-      invoke("get_disk_encryption_info").then((diskEncryption: unknown) => {
-        setChecks((prevChecks) => {
-          const newChecks = [...prevChecks];
-          const diskEncryptionCheck = newChecks.findIndex(
-            (check) => check.id === "disk-encryption"
-          );
-          newChecks[diskEncryptionCheck] = {
-            ...newChecks[diskEncryptionCheck],
-            status: !!diskEncryption ? "completed" : "failed",
-            result: diskEncryption as string,
-            error: diskEncryption ? undefined : "Disk encryption not enabled",
-          };
-          return newChecks;
-        });
-      }),
-      invoke("get_screen_lock_info").then((screenLock: unknown) => {
-        console.log(screenLock);
-        setChecks((prevChecks) => {
-          const newChecks = [...prevChecks];
-          const screenLockCheck = newChecks.findIndex(
-            (check) => check.id === "lock-screen"
-          );
-          newChecks[screenLockCheck] = {
-            ...newChecks[screenLockCheck],
-            status: !!screenLock ? "completed" : "failed",
-            result: screenLock as string,
-            error: screenLock ? undefined : "Screen lock not enabled",
-          };
-          return newChecks;
-        });
-      }),
+      securityChecks.map((check) =>
+        invoke(check.cmd).then((result: unknown) => {
+          setChecks((prevChecks) => {
+            const newChecks = [...prevChecks];
+            const checkIndex = newChecks.findIndex((c) => c.id === check.id);
+            newChecks[checkIndex] = {
+              ...newChecks[checkIndex],
+              status: !!result ? "completed" : "failed",
+              result: result as string,
+              error: result ? undefined : "Check failed",
+            };
+            return newChecks;
+          });
+        })
+      ),
     ]);
     const endTime = Date.now();
     setTimeTaken(endTime - startTime);
