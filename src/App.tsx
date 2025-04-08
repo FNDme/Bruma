@@ -5,22 +5,44 @@ import { Layout } from "@/components/layout/Layout";
 import { WritePage } from "./pages/WritePage";
 import { CollectionPage } from "./pages/CollectionPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { NotePage } from "./pages/NotePage";
 import { ThemeProvider } from "./contexts/ThemeProvider";
+import { JournalProvider } from "./contexts/JournalContext";
+import { DeviceProvider } from "./contexts/DeviceContext";
+import SystemChecksPage from "./pages/SystemChecksPage";
+import { SystemChecksProvider } from "./contexts/SystemChecksContext";
+import { ReportSettingsProvider } from "./contexts/ReportSettingsContext";
 
 function App() {
   return (
-    <ThemeProvider>
-      <BrowserRouter>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Navigate to="/write" replace />} />
-            <Route path="/write" element={<WritePage />} />
-            <Route path="/collection" element={<CollectionPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-          </Routes>
-        </Layout>
-      </BrowserRouter>
-    </ThemeProvider>
+    <SystemChecksProvider>
+      <DeviceProvider>
+        <ThemeProvider defaultTheme="system" storageKey="bruma-theme">
+          <JournalProvider>
+            <ReportSettingsProvider>
+              <BrowserRouter>
+                <Layout>
+                  <Routes>
+                    <Route
+                      path="/"
+                      element={<Navigate to="/write" replace />}
+                    />
+                    <Route path="/write" element={<WritePage />} />
+                    <Route path="/collection" element={<CollectionPage />} />
+                    <Route path="/collection/:noteId" element={<NotePage />} />
+                    <Route
+                      path="/system-checks"
+                      element={<SystemChecksPage />}
+                    />
+                    <Route path="/settings" element={<SettingsPage />} />
+                  </Routes>
+                </Layout>
+              </BrowserRouter>
+            </ReportSettingsProvider>
+          </JournalProvider>
+        </ThemeProvider>
+      </DeviceProvider>
+    </SystemChecksProvider>
   );
 }
 
