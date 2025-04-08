@@ -8,6 +8,8 @@ export interface SystemCheck {
   id: string;
   name: string;
   description: string;
+  successMessage: (result?: string) => string;
+  errorMessage: (error?: string) => string;
   status: CheckStatus;
   error?: string;
   icon?: ReactNode;
@@ -27,6 +29,10 @@ const initialChecks: SystemCheck[] = [
     id: "antivirus",
     name: "Antivirus Check",
     description: "Verifying antivirus is installed and running",
+    successMessage: (result?: string) =>
+      `Antivirus is installed and running: ${result || "N/A"}`,
+    errorMessage: (error?: string) =>
+      `Antivirus check failed: ${error || "N/A"}`,
     status: "pending",
     icon: <ShieldCheck className="h-5 w-5" />,
   },
@@ -34,6 +40,10 @@ const initialChecks: SystemCheck[] = [
     id: "disk-encryption",
     name: "Disk Encryption Check",
     description: "Verifying disk encryption is enabled",
+    successMessage: (result?: string) =>
+      `Disk encryption is enabled: ${result || "N/A"}`,
+    errorMessage: (error?: string) =>
+      `Disk encryption check failed: ${error || "N/A"}`,
     status: "pending",
     icon: <HardDrive className="h-5 w-5" />,
   },
@@ -41,6 +51,10 @@ const initialChecks: SystemCheck[] = [
     id: "lock-screen",
     name: "Lock Screen Check",
     description: "Verifying lock screen is enabled",
+    successMessage: (result?: string) =>
+      `Lock screen is enabled: ${result ? `${result} minutes` : "N/A"}`,
+    errorMessage: (error?: string) =>
+      `Lock screen check failed: ${error || "N/A"}`,
     status: "pending",
     icon: <Wallpaper className="h-5 w-5" />,
   },
@@ -68,8 +82,9 @@ export function SystemChecksProvider({ children }: { children: ReactNode }) {
           );
           newChecks[antivirusCheck] = {
             ...newChecks[antivirusCheck],
-            status: "completed",
+            status: !!antivirus ? "completed" : "failed",
             result: antivirus as string,
+            error: antivirus ? undefined : "Antivirus not installed",
           };
           return newChecks;
         });
@@ -82,13 +97,15 @@ export function SystemChecksProvider({ children }: { children: ReactNode }) {
           );
           newChecks[diskEncryptionCheck] = {
             ...newChecks[diskEncryptionCheck],
-            status: "completed",
+            status: !!diskEncryption ? "completed" : "failed",
             result: diskEncryption as string,
+            error: diskEncryption ? undefined : "Disk encryption not enabled",
           };
           return newChecks;
         });
       }),
       invoke("get_screen_lock_info").then((screenLock: unknown) => {
+        console.log(screenLock);
         setChecks((prevChecks) => {
           const newChecks = [...prevChecks];
           const screenLockCheck = newChecks.findIndex(
@@ -96,8 +113,9 @@ export function SystemChecksProvider({ children }: { children: ReactNode }) {
           );
           newChecks[screenLockCheck] = {
             ...newChecks[screenLockCheck],
-            status: "completed",
+            status: !!screenLock ? "completed" : "failed",
             result: screenLock as string,
+            error: screenLock ? undefined : "Screen lock not enabled",
           };
           return newChecks;
         });
