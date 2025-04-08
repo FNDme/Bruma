@@ -1,56 +1,130 @@
 import { Link, useLocation } from "react-router-dom";
-import { Pencil, BookOpen, Settings } from "lucide-react";
+import {
+  Pencil,
+  BookOpen,
+  Settings,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "../ui/button";
 import { Separator } from "../ui/separator";
+import { useState } from "react";
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
+type NavigationItem = {
+  label: string;
+  path: string;
+  icon: React.ReactNode;
+};
+
+type NavigationGroup = {
+  label: string;
+  items: NavigationItem[];
+};
+
+const navigationItems: NavigationGroup[] = [
+  {
+    label: "Journal",
+    items: [
+      {
+        label: "Write",
+        path: "/write",
+        icon: <Pencil className="mr-2 h-4 w-4" />,
+      },
+      {
+        label: "Collection",
+        path: "/collection",
+        icon: <BookOpen className="mr-2 h-4 w-4" />,
+      },
+    ],
+  },
+  {
+    label: "Security",
+    items: [
+      {
+        label: "System Checks",
+        path: "/system-checks",
+        icon: <CheckCircle className="mr-2 h-4 w-4" />,
+      },
+    ],
+  },
+];
+
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
-      <div className="w-64 border-r border-border bg-muted/50">
+      <div
+        className={`relative ${
+          isCollapsed ? "w-18" : "w-64"
+        } border-r border-border bg-muted/50 transition-all duration-300`}
+      >
         <div className="flex h-full flex-col p-4">
-          <div className="space-y-2">
+          <div className="flex items-center justify-end mb-4">
+            {!isCollapsed && (
+              <h1 className="text-lg font-semibold absolute left-4">Bruma</h1>
+            )}
             <Button
-              asChild
-              variant={location.pathname === "/write" ? "default" : "ghost"}
-              className="w-full justify-start"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setIsCollapsed(!isCollapsed)}
             >
-              <Link to="/write">
-                <Pencil className="mr-2 h-4 w-4" />
-                Write
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant={
-                location.pathname === "/collection" ? "default" : "ghost"
-              }
-              className="w-full justify-start"
-            >
-              <Link to="/collection">
-                <BookOpen className="mr-2 h-4 w-4" />
-                Collection
-              </Link>
+              {isCollapsed ? (
+                <ChevronRight className="h-4 w-4" />
+              ) : (
+                <ChevronLeft className="h-4 w-4" />
+              )}
             </Button>
           </div>
+          <div className="space-y-4">
+            {navigationItems.map((group) => (
+              <div key={group.label} className="space-y-2">
+                <h3 className="mx-2 text-sm font-semibold text-muted-foreground h-6 transition-all duration-300">
+                  {isCollapsed ? (
+                    <Separator className="w-full translate-y-2" />
+                  ) : (
+                    group.label
+                  )}
+                </h3>
+                {group.items.map((item) => (
+                  <Button
+                    key={item.path}
+                    asChild
+                    variant={
+                      location.pathname === item.path ? "default" : "ghost"
+                    }
+                    className="w-full justify-start"
+                    title={isCollapsed ? item.label : undefined}
+                  >
+                    <Link to={item.path}>
+                      {item.icon}
+                      {!isCollapsed && item.label}
+                    </Link>
+                  </Button>
+                ))}
+              </div>
+            ))}
+          </div>
 
-          {/* Settings button at the bottom */}
           <div className="mt-auto">
             <Separator className="my-4" />
             <Button
               asChild
               variant={location.pathname === "/settings" ? "default" : "ghost"}
-              className="w-full justify-start"
+              className={`w-full justify-start ${isCollapsed ? "px-2" : ""}`}
+              title={isCollapsed ? "Settings" : undefined}
             >
               <Link to="/settings">
                 <Settings className="mr-2 h-4 w-4" />
-                Settings
+                {!isCollapsed && "Settings"}
               </Link>
             </Button>
           </div>

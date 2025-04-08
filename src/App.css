@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
@@ -116,5 +117,26 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Scrollbar styling */
+  main::-webkit-scrollbar-track {
+    @apply bg-background;
+    border: 4px solid transparent;
+  }
+
+  main::-webkit-scrollbar-thumb {
+    @apply bg-muted rounded-full;
+    border: 4px solid transparent;
+  }
+
+  main::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/30;
+  }
+
+  /* Firefox scrollbar */
+  main {
+    scrollbar-width: thin;
+    scrollbar-color: var(--muted) transparent;
   }
 }
