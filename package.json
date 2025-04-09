@@ -1,8 +1,10 @@
 {
   "name": "bruma",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
+  "author": "Gabriel Luis Freitas",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
