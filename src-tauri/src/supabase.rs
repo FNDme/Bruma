@@ -44,7 +44,7 @@ pub async fn send_security_report(
     user_full_name: String,
     report: SecurityReport,
 ) -> Result<bool, String> {
-    let device_id = get_device_id(&tauri_plugin_os::platform().to_string());
+    let device_id = get_device_id();
     let credentials = credentials::get_supabase_credentials()
         .await?
         .ok_or_else(|| "Supabase credentials not configured".to_string())?;
@@ -92,7 +92,7 @@ pub async fn get_last_report(user_email: String) -> Result<Option<SupabaseReport
     let credentials = credentials::get_supabase_credentials()
         .await?
         .ok_or_else(|| "Supabase credentials not configured".to_string())?;
-    let device_id = get_device_id(&tauri_plugin_os::platform().to_string());
+    let device_id = get_device_id();
 
     let client = Client::new();
     let response = client

@@ -11,7 +11,7 @@ pub struct DeviceInfo {
 #[tauri::command]
 pub async fn get_device_info() -> Result<DeviceInfo, String> {
     let os = tauri_plugin_os::platform().to_string();
-    let device_id = get_device_id(&os);
+    let device_id = get_device_id();
 
     Ok(DeviceInfo {
         os,
