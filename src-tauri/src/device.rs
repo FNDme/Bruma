@@ -1,4 +1,7 @@
-use std::{os::windows::process::CommandExt, process::Command};
+use std::process::Command;
+
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 
 #[cfg(target_os = "windows")]
 pub fn get_device_id() -> String {
