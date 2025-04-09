@@ -1,7 +1,9 @@
-use std::process::Command;
-
 #[cfg(target_os = "windows")]
+use std::process::Command;
 use std::os::windows::process::CommandExt;
+
+#[cfg(target_os = "macos")]
+use std::process::Command;
 
 #[cfg(target_os = "windows")]
 pub fn get_device_id() -> String {
