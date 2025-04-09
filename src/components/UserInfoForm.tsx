@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -6,8 +6,13 @@ import { useUserCredentials } from "@/contexts/UserCredentialsContext";
 
 export function UserInfoForm() {
   const { credentials, setCredentials } = useUserCredentials();
-  const [userFullName, setUserFullName] = useState(credentials.userName);
-  const [userEmail, setUserEmail] = useState(credentials.userEmail);
+  const [userFullName, setUserFullName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+
+  useEffect(() => {
+    setUserFullName(credentials.userName);
+    setUserEmail(credentials.userEmail);
+  }, []);
 
   const hasChanges =
     userFullName !== credentials.userName ||
@@ -15,7 +20,8 @@ export function UserInfoForm() {
 
   return (
     <form
-      onSubmit={() => {
+      onSubmit={(e) => {
+        e.preventDefault();
         setCredentials({ userName: userFullName, userEmail: userEmail });
       }}
       className="space-y-4"

@@ -90,7 +90,6 @@ export default function SystemChecksPage() {
   const handleRunChecks = async () => {
     try {
       await runChecks();
-      toast.success("Checks completed successfully");
     } catch (error) {
       console.error(error);
       toast.error(
@@ -99,10 +98,9 @@ export default function SystemChecksPage() {
     }
   };
 
-  const handleResetChecks = async () => {
+  const handleResetChecks = () => {
     try {
-      await resetChecks();
-      toast.success("Checks reset successfully");
+      resetChecks();
     } catch (error) {
       console.error(error);
       toast.error(

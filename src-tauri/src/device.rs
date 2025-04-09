@@ -1,8 +1,9 @@
-use std::process::Command;
+use std::{os::windows::process::CommandExt, process::Command};
 
 pub fn get_windows_device_id() -> String {
     let output = Command::new("wmic")
         .args(["csproduct", "get", "uuid"])
+        .creation_flags(0x08000000)
         .output()
         .expect("Failed to execute wmic command");
 

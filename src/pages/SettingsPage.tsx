@@ -1,5 +1,11 @@
 import { useTheme } from "../contexts/ThemeProvider";
-import { Switch } from "../components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import {
   Card,
   CardContent,
@@ -10,7 +16,6 @@ import {
 
 export function SettingsPage() {
   const { theme, setTheme } = useTheme();
-  const isDark = theme === "dark";
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 space-y-6">
@@ -25,17 +30,21 @@ export function SettingsPage() {
         <CardContent>
           <div className="flex items-center justify-between">
             <div>
-              <label className="text-sm font-medium">Dark Mode</label>
+              <label className="text-sm font-medium">Theme</label>
               <p className="text-sm text-muted-foreground">
-                Toggle between light and dark mode.
+                Choose your preferred theme.
               </p>
             </div>
-            <Switch
-              checked={isDark}
-              onCheckedChange={(checked) =>
-                setTheme(checked ? "dark" : "light")
-              }
-            />
+            <Select value={theme} onValueChange={setTheme}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select theme" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="system">System</SelectItem>
+                <SelectItem value="light">Light</SelectItem>
+                <SelectItem value="dark">Dark</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>

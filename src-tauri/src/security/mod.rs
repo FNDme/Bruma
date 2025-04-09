@@ -1,4 +1,4 @@
-use std::process::Command;
+use std::{os::windows::process::CommandExt, process::Command};
 
 #[tauri::command]
 pub async fn get_antivirus_info() -> Result<Option<String>, String> {
@@ -26,6 +26,7 @@ pub async fn check_antivirus() -> Option<String> {
             "Get",
             "DisplayName",
         ])
+        .creation_flags(0x08000000)
         .output()
         .ok()?;
 
@@ -102,6 +103,7 @@ pub async fn check_antivirus() -> Option<String> {
 pub async fn check_disk_encryption() -> Option<String> {
     let output = Command::new("powershell")
         .args(&["-Command", "(New-Object -ComObject Shell.Application).NameSpace('C:').Self.ExtendedProperty('System.Volume.BitLockerProtection')"])
+        .creation_flags(0x08000000)
         .output()
         .ok()?;
 
@@ -168,6 +170,7 @@ pub async fn check_screen_lock() -> Option<u32> {
                 HasBattery = $hasBattery
             } | ConvertTo-Json
         "#])
+        .creation_flags(0x08000000)
         .output()
         .ok()?;
 
