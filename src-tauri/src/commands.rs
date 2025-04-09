@@ -1,5 +1,5 @@
-use serde::Serialize;
 use crate::device::get_device_id;
+use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct DeviceInfo {

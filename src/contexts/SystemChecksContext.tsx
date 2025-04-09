@@ -77,6 +77,7 @@ export function SystemChecksProvider({ children }: { children: ReactNode }) {
   const runChecks = async () => {
     setIsRunning(true);
     setChecks(initialChecks.map((check) => ({ ...check, status: "running" })));
+    setTimeTaken(null);
     const startTime = Date.now();
     await Promise.all([
       securityChecks.map((check) =>

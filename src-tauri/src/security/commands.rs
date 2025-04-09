@@ -1,7 +1,7 @@
 use crate::security::{check_antivirus, check_disk_encryption, check_screen_lock};
 use serde::Serialize;
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct SecurityInfo {
     antivirus: Option<String>,
     disk_encryption: Option<String>,

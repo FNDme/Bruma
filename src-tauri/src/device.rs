@@ -5,14 +5,14 @@ pub fn get_windows_device_id() -> String {
         .args(["csproduct", "get", "uuid"])
         .output()
         .expect("Failed to execute wmic command");
-    
+
     let uuid = String::from_utf8_lossy(&output.stdout)
         .lines()
         .nth(1)
         .unwrap_or("unknown")
         .trim()
         .to_string();
-    
+
     if uuid.is_empty() {
         "unknown".to_string()
     } else {
@@ -25,7 +25,7 @@ pub fn get_macos_device_id() -> String {
         .args(["-d2", "-c", "IOPlatformExpertDevice"])
         .output()
         .expect("Failed to execute ioreg command");
-    
+
     let output_str = String::from_utf8_lossy(&output.stdout);
     output_str
         .lines()
@@ -52,4 +52,4 @@ pub fn get_device_id(os: &str) -> String {
         "linux" => get_linux_device_id(),
         _ => "unknown".to_string(),
     }
-} 
+}

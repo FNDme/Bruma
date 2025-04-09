@@ -7,6 +7,7 @@ import { AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SystemCheckItem } from "@/components/SystemCheckItem";
 import { UserInfoForm } from "@/components/UserInfoForm";
+import { SupabaseCredentialsForm } from "@/components/SupabaseCredentialsForm";
 import {
   Collapsible,
   CollapsibleContent,
@@ -61,6 +62,15 @@ export default function SystemChecksPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Supabase Configuration</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SupabaseCredentialsForm />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Report</CardTitle>
         </CardHeader>
         <CardContent>
@@ -69,7 +79,12 @@ export default function SystemChecksPage() {
             onOpenChange={setIsReportSettingsOpen}
           >
             <div className="flex justify-between items-center">
-              <Button variant="outline">Send Report</Button>
+              <Button
+                variant="outline"
+                onClick={() => setIsReportSettingsOpen(true)}
+              >
+                Send Report
+              </Button>
               <CollapsibleTrigger className="cursor-pointer flex items-center gap-2">
                 Report settings
                 {isReportSettingsOpen ? (

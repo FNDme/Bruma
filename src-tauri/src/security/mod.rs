@@ -18,7 +18,14 @@ pub async fn get_screen_lock_info() -> Result<Option<u32>, String> {
 #[cfg(target_os = "windows")]
 pub async fn check_antivirus() -> Option<String> {
     let output = Command::new("wmic")
-        .args(&["/node:localhost", "/namespace:\\\\root\\SecurityCenter2", "path", "AntiVirusProduct", "Get", "DisplayName"])
+        .args(&[
+            "/node:localhost",
+            "/namespace:\\\\root\\SecurityCenter2",
+            "path",
+            "AntiVirusProduct",
+            "Get",
+            "DisplayName",
+        ])
         .output()
         .ok()?;
 
@@ -73,13 +80,13 @@ pub async fn check_antivirus() -> Option<String> {
         .lines()
         .filter(|line| {
             let line = line.to_lowercase();
-            line.contains("clamav") ||
-            line.contains("sophos") ||
-            line.contains("eset") ||
-            line.contains("comodo") ||
-            line.contains("avg") ||
-            line.contains("avast") ||
-            line.contains("bitdefender")
+            line.contains("clamav")
+                || line.contains("sophos")
+                || line.contains("eset")
+                || line.contains("comodo")
+                || line.contains("avg")
+                || line.contains("avast")
+                || line.contains("bitdefender")
         })
         .map(|s| s.trim().to_string())
         .collect();
@@ -99,7 +106,7 @@ pub async fn check_disk_encryption() -> Option<String> {
         .ok()?;
 
     let result = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    
+
     match result.as_str() {
         "1" => Some("BitLocker".to_string()),
         "7" => Some("Bitlocker: only space used".to_string()),
@@ -125,21 +132,16 @@ pub async fn check_disk_encryption() -> Option<String> {
 #[cfg(target_os = "linux")]
 pub async fn check_disk_encryption() -> Option<String> {
     // Check for ecryptfs
-    let ecryptfs_output = Command::new("mount")
-        .output()
-        .ok()?;
-    
+    let ecryptfs_output = Command::new("mount").output().ok()?;
+
     let ecryptfs_result = String::from_utf8_lossy(&ecryptfs_output.stdout);
     if ecryptfs_result.contains("ecryptfs") {
         return Some("ecryptfs".to_string());
     }
 
     // Check for LUKS
-    let luks_output = Command::new("lsblk")
-        .args(&["-o", "TYPE"])
-        .output()
-        .ok()?;
-    
+    let luks_output = Command::new("lsblk").args(&["-o", "TYPE"]).output().ok()?;
+
     let luks_result = String::from_utf8_lossy(&luks_output.stdout);
     if luks_result.contains("crypt") {
         return Some("LUKS".to_string());
@@ -171,7 +173,7 @@ pub async fn check_screen_lock() -> Option<u32> {
 
     let result = String::from_utf8_lossy(&output.stdout);
     let settings: serde_json::Value = serde_json::from_str(&result).ok()?;
-    
+
     let parse_hex = |s: &str| -> Option<u32> {
         let hex_str = if s.starts_with("0x") { &s[2..] } else { s };
         u32::from_str_radix(hex_str, 16).ok()
@@ -202,7 +204,7 @@ pub async fn check_screen_lock() -> Option<u32> {
         .ok()?;
 
     let result = String::from_utf8_lossy(&output.stdout);
-    
+
     if result.contains("screenLock is off") {
         return None;
     }
@@ -211,18 +213,19 @@ pub async fn check_screen_lock() -> Option<u32> {
         .args(&["-currentHost", "read", "com.apple.screensaver", "idleTime"])
         .output()
         .ok()?;
-    
+
     let screensaver_time = String::from_utf8_lossy(&screensaver_output.stdout)
         .trim()
         .parse::<u32>()
-        .ok()? / 60;
+        .ok()?
+        / 60;
 
     let display_sleep_ac = get_display_sleep("AC Power")?;
     let display_sleep_battery = get_display_sleep("Battery Power")?;
 
     let max_timeout = std::cmp::max(
         screensaver_time,
-        std::cmp::max(display_sleep_ac, display_sleep_battery)
+        std::cmp::max(display_sleep_ac, display_sleep_battery),
     );
 
     if result.contains("screenLock delay is immediate") {
@@ -249,7 +252,7 @@ fn get_display_sleep(mode: &str) -> Option<u32> {
 
     let result = String::from_utf8_lossy(&output.stdout);
     let pattern = format!("{}/displaysleep", mode);
-    
+
     result
         .lines()
         .find(|line| line.contains(&pattern))
@@ -274,11 +277,8 @@ pub async fn check_screen_lock() -> Option<u32> {
     let desktop = if desktop == "ubuntu" {
         "gnome".to_string()
     } else if desktop == "awesome" {
-        let sessions = Command::new("ls")
-            .arg("/usr/bin/*session")
-            .output()
-            .ok()?;
-        
+        let sessions = Command::new("ls").arg("/usr/bin/*session").output().ok()?;
+
         if String::from_utf8_lossy(&sessions.stdout).contains("gnome") {
             "gnome".to_string()
         } else {
@@ -289,7 +289,11 @@ pub async fn check_screen_lock() -> Option<u32> {
     };
 
     let lock_enabled = Command::new("gsettings")
-        .args(&["get", &format!("org.{}.desktop.screensaver", desktop), "lock-enabled"])
+        .args(&[
+            "get",
+            &format!("org.{}.desktop.screensaver", desktop),
+            "lock-enabled",
+        ])
         .output()
         .ok()?;
 
@@ -298,12 +302,20 @@ pub async fn check_screen_lock() -> Option<u32> {
     }
 
     let idle_delay = Command::new("gsettings")
-        .args(&["get", &format!("org.{}.desktop.session", desktop), "idle-delay"])
+        .args(&[
+            "get",
+            &format!("org.{}.desktop.session", desktop),
+            "idle-delay",
+        ])
         .output()
         .ok()?;
 
     let lock_delay = Command::new("gsettings")
-        .args(&["get", &format!("org.{}.desktop.screensaver", desktop), "lock-delay"])
+        .args(&[
+            "get",
+            &format!("org.{}.desktop.screensaver", desktop),
+            "lock-delay",
+        ])
         .output()
         .ok()?;
 
@@ -320,4 +332,4 @@ pub async fn check_screen_lock() -> Option<u32> {
         .and_then(|s| s.parse::<u32>().ok())?;
 
     Some((idle_seconds + lock_seconds) / 60)
-} 
+}
