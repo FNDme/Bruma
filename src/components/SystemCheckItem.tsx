@@ -47,6 +47,9 @@ export function SystemCheckItem({ check }: { check: SystemCheck }) {
         {check.status === "pending" && (
           <p className="text-sm text-muted-foreground">{check.description}</p>
         )}
+        {check.status === "running" && (
+          <p className="text-sm text-muted-foreground">Running...</p>
+        )}
       </div>
     </div>
   );

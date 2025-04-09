@@ -3,15 +3,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 
 export function SupabaseCredentialsForm() {
   const [url, setUrl] = useState("");
   const [anonKey, setAnonKey] = useState("");
-  const [hasCredentials, setHasCredentials] = useState(false);
+  const [hasCredentials, setHasCredentials] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     checkCredentials();
@@ -26,8 +25,6 @@ export function SupabaseCredentialsForm() {
       setError(
         err instanceof Error ? err.message : "Failed to check credentials"
       );
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -42,7 +39,6 @@ export function SupabaseCredentialsForm() {
     }
 
     try {
-      console.log("Saving credentials:", { url, anonKey });
       await invoke("save_supabase_credentials", {
         request: { url, anon_key: anonKey },
       });
@@ -69,15 +65,6 @@ export function SupabaseCredentialsForm() {
       );
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center space-y-2 py-8">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Loading credentials...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-4">

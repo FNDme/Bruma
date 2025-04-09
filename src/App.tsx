@@ -11,7 +11,7 @@ import { JournalProvider } from "./contexts/JournalContext";
 import { DeviceProvider } from "./contexts/DeviceContext";
 import SystemChecksPage from "./pages/SystemChecksPage";
 import { SystemChecksProvider } from "./contexts/SystemChecksContext";
-import { ReportSettingsProvider } from "./contexts/ReportSettingsContext";
+import { UserCredentialsProvider } from "./contexts/UserCredentialsContext";
 
 function App() {
   return (
@@ -19,7 +19,7 @@ function App() {
       <DeviceProvider>
         <ThemeProvider defaultTheme="system" storageKey="bruma-theme">
           <JournalProvider>
-            <ReportSettingsProvider>
+            <UserCredentialsProvider>
               <BrowserRouter>
                 <Layout>
                   <Routes>
@@ -38,7 +38,7 @@ function App() {
                   </Routes>
                 </Layout>
               </BrowserRouter>
-            </ReportSettingsProvider>
+            </UserCredentialsProvider>
           </JournalProvider>
         </ThemeProvider>
       </DeviceProvider>

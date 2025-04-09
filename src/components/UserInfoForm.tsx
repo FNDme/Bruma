@@ -2,72 +2,24 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { useSystemChecks } from "@/contexts/SystemChecksContext";
-import { invoke } from "@tauri-apps/api/core";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { useUserCredentials } from "@/contexts/UserCredentialsContext";
 
 export function UserInfoForm() {
-  const [userFullName, setUserFullName] = useState("");
-  const [userEmail, setUserEmail] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isSending, setIsSending] = useState(false);
-  const { checks } = useSystemChecks();
+  const { credentials, setCredentials } = useUserCredentials();
+  const [userFullName, setUserFullName] = useState(credentials.userName);
+  const [userEmail, setUserEmail] = useState(credentials.userEmail);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setIsSending(true);
-
-    try {
-      const report = {
-        antivirus: checks.find((c) => c.id === "antivirus")?.result,
-        disk_encryption: checks.find((c) => c.id === "disk-encryption")?.result,
-        screen_lock: checks.find((c) => c.id === "lock-screen")?.result,
-      };
-      console.log("Sending report with params:", {
-        userEmail: userEmail,
-        userFullName: userFullName,
-        report,
-      });
-      const success = await invoke<boolean>("send_security_report", {
-        userEmail,
-        userFullName: userFullName,
-        report,
-      });
-      console.log(success);
-
-      if (!success) {
-        throw new Error("Failed to send report");
-      }
-
-      // Clear form on success
-      setUserFullName("");
-      setUserEmail("");
-    } catch (err) {
-      console.log(err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to send report";
-      if (errorMessage.includes("duplicate key value")) {
-        setError(
-          "A report for this device already exists. Please try again later."
-        );
-      } else {
-        setError(errorMessage);
-      }
-    } finally {
-      setIsSending(false);
-    }
-  };
+  const hasChanges =
+    userFullName !== credentials.userName ||
+    userEmail !== credentials.userEmail;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+    <form
+      onSubmit={() => {
+        setCredentials({ userName: userFullName, userEmail: userEmail });
+      }}
+      className="space-y-4"
+    >
       <div className="space-y-2">
         <Label htmlFor="name">Name</Label>
         <Input
@@ -89,8 +41,8 @@ export function UserInfoForm() {
           required
         />
       </div>
-      <Button type="submit" disabled={isSending}>
-        {isSending ? "Sending..." : "Send Report"}
+      <Button type="submit" disabled={!hasChanges}>
+        {hasChanges ? "Save Credentials" : "No changes"}
       </Button>
     </form>
   );

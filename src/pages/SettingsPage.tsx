@@ -43,7 +43,7 @@ export function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>About Bruma</CardTitle>
-          <CardDescription>Your personal writing companion.</CardDescription>
+          <CardDescription>Your personal companion.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -51,16 +51,16 @@ export function SettingsPage() {
             <p className="text-sm text-muted-foreground">1.0.0</p>
           </div>
           <div className="space-y-2">
-            <h3 className="font-medium">Your Writing Partner</h3>
+            <h3 className="font-medium">Your Toolbox for life</h3>
             <div className="text-sm text-muted-foreground">
               <p>
-                Bruma is more than just a writing app - it's your creative
-                companion. Whether you're crafting stories, organizing thoughts,
-                or building your collection of ideas, Bruma is here to support
-                your creative journey. <br />
-                With a focus on simplicity and elegance, it provides the perfect
-                environment for your words to flourish, helping you bring your
-                ideas to life while keeping them beautifully organized.
+                Bruma is your digital Swiss Army knife, ready to tackle life's
+                challenges head-on. Whether you're pouring your thoughts into a
+                private journal, running security checks to keep your digital
+                life safe, or preparing for future adventures, Bruma has your
+                back. It's not just an app – it's your personal companion in the
+                digital wilderness, growing and evolving with you every step of
+                the way. Stay tuned for more powerful features coming your way!
               </p>
             </div>
           </div>

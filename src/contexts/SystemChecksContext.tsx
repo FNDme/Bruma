@@ -37,7 +37,7 @@ const securityChecks: (Omit<SystemCheck, "status"> & { cmd: string })[] = [
     cmd: "get_antivirus_info",
   },
   {
-    id: "disk-encryption",
+    id: "disk_encryption",
     name: "Disk Encryption Check",
     description: "Verifying disk encryption is enabled",
     successMessage: (result?: string) =>
@@ -48,54 +48,61 @@ const securityChecks: (Omit<SystemCheck, "status"> & { cmd: string })[] = [
     cmd: "get_disk_encryption_info",
   },
   {
-    id: "lock-screen",
-    name: "Lock Screen Check",
-    description: "Verifying lock screen is enabled",
+    id: "screen_lock",
+    name: "Screen Lock Check",
+    description: "Verifying screen lock is enabled",
     successMessage: (result?: string) =>
-      `Lock screen is enabled: ${result ? `${result} minutes` : "N/A"}`,
+      `Screen lock is enabled: ${result ? `${result} minutes` : "N/A"}`,
     errorMessage: (error?: string) =>
-      `Lock screen check failed: ${error || "N/A"}`,
+      `Screen lock check failed: ${error || "N/A"}`,
     icon: <Wallpaper className="h-5 w-5" />,
     cmd: "get_screen_lock_info",
   },
 ];
 
-const initialChecks: SystemCheck[] = securityChecks.map((check) => ({
-  ...check,
-  status: "pending",
-}));
+const initialChecks: Record<string, SystemCheck> = securityChecks.reduce(
+  (acc, check) => {
+    acc[check.id] = { ...check, status: "pending" };
+    return acc;
+  },
+  {} as Record<string, SystemCheck>
+);
 
 const SystemChecksContext = createContext<SystemChecksContextType | undefined>(
   undefined
 );
 
 export function SystemChecksProvider({ children }: { children: ReactNode }) {
-  const [checks, setChecks] = useState<SystemCheck[]>(initialChecks);
+  const [checks, setChecks] =
+    useState<Record<string, SystemCheck>>(initialChecks);
   const [isRunning, setIsRunning] = useState(false);
   const [timeTaken, setTimeTaken] = useState<number | null>(null);
 
   const runChecks = async () => {
     setIsRunning(true);
-    setChecks(initialChecks.map((check) => ({ ...check, status: "running" })));
+    setChecks(
+      securityChecks.reduce((acc, check) => {
+        acc[check.id] = { ...check, status: "running" };
+        return acc;
+      }, {} as Record<string, SystemCheck>)
+    );
     setTimeTaken(null);
     const startTime = Date.now();
-    await Promise.all([
+    await Promise.all(
       securityChecks.map((check) =>
-        invoke(check.cmd).then((result: unknown) => {
-          setChecks((prevChecks) => {
-            const newChecks = [...prevChecks];
-            const checkIndex = newChecks.findIndex((c) => c.id === check.id);
-            newChecks[checkIndex] = {
-              ...newChecks[checkIndex],
+        invoke(check.cmd).then((result: unknown) =>
+          setChecks((prevChecks) => ({
+            ...prevChecks,
+            [check.id]: {
+              ...prevChecks[check.id],
               status: !!result ? "completed" : "failed",
               result: result as string,
               error: result ? undefined : "Check failed",
-            };
-            return newChecks;
-          });
-        })
-      ),
-    ]);
+            },
+          }))
+        )
+      )
+    );
     const endTime = Date.now();
     setTimeTaken(endTime - startTime);
     setIsRunning(false);
@@ -109,7 +116,7 @@ export function SystemChecksProvider({ children }: { children: ReactNode }) {
   return (
     <SystemChecksContext.Provider
       value={{
-        checks,
+        checks: Object.values(checks),
         isRunning,
         timeTaken,
         runChecks,

@@ -7,8 +7,9 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { Button } from "../ui/button";
-import { Separator } from "../ui/separator";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Toaster } from "@/components/ui/sonner";
 import { useState } from "react";
 
 interface LayoutProps {
@@ -133,6 +134,8 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Main content */}
       <main className="flex-1 overflow-auto p-6">{children}</main>
+
+      <Toaster />
     </div>
   );
 }

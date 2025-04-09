@@ -5,15 +5,25 @@ use serde::{Deserialize, Serialize};
 use tauri_plugin_os::{platform, version};
 use crate::credentials;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct SecurityReport {
     antivirus: Option<String>,
     disk_encryption: Option<String>,
     screen_lock: Option<u32>,
 }
 
-#[derive(Serialize, Debug)]
-struct SupabaseReport {
+impl Default for SecurityReport {
+    fn default() -> Self {
+        SecurityReport {
+            antivirus: None,
+            disk_encryption: None,
+            screen_lock: None,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct SupabaseReport {
     device_id: String,
     user_email: String,
     user_full_name: String,
@@ -22,7 +32,7 @@ struct SupabaseReport {
     antivirus_detected: bool,
     antivirus_name: String,
     screen_lock_active: bool,
-    screen_lock_time: u32,
+    screen_lock_time: String,
     operating_system: String,
     os_version: String,
     last_check: String,
@@ -48,7 +58,7 @@ pub async fn send_security_report(
         antivirus_detected: report.antivirus.is_some(),
         antivirus_name: report.antivirus.unwrap_or_default(),
         screen_lock_active: report.screen_lock.is_some(),
-        screen_lock_time: report.screen_lock.unwrap_or_default(),
+        screen_lock_time: report.screen_lock.unwrap_or_default().to_string(),
         operating_system: platform().to_string(),
         os_version: version().to_string(),
         last_check: chrono::Local::now().to_string(),
@@ -74,5 +84,34 @@ pub async fn send_security_report(
             .await
             .unwrap_or_else(|_| "Unknown error".to_string());
         Err(format!("Failed to send report: {}", error_text))
+    }
+}
+
+#[tauri::command]
+pub async fn get_last_report(user_email: String) -> Result<Option<SupabaseReport>, String> {
+    let credentials = credentials::get_supabase_credentials()
+        .await?
+        .ok_or_else(|| "Supabase credentials not configured".to_string())?;
+    let device_id = get_device_id(&tauri_plugin_os::platform().to_string());
+
+    let client = Client::new();
+    let response = client
+        .get(&format!("{}/rest/v1/security_reports?device_id=eq.{}&user_email=eq.{}&order=last_check.desc&limit=1", credentials.url, device_id, user_email))
+        .header("apikey", &credentials.anon_key)
+        .header("Authorization", &format!("Bearer {}", credentials.anon_key))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if response.status().is_success() {
+        let body = response.text().await.unwrap_or_default();
+        let reports: Vec<SupabaseReport> = serde_json::from_str(&body).map_err(|e| e.to_string())?;
+        Ok(reports.first().cloned())
+    } else {
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
+        Err(format!("Failed to get report: {}", error_text))
     }
 }

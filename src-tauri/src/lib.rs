@@ -24,6 +24,7 @@ pub fn run() {
             security::get_disk_encryption_info,
             security::get_screen_lock_info,
             supabase::send_security_report,
+            supabase::get_last_report,
             credentials::has_supabase_credentials,
             credentials::remove_supabase_credentials,
             credentials::save_supabase_credentials
