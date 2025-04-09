@@ -8,7 +8,7 @@ use std::process::Command;
 #[cfg(target_os = "windows")]
 pub fn get_device_id() -> String {
     let output = Command::new("wmic")
-        .args(["csproduct", "get", "uuid"])
+        .args(["os", "get", "serialnumber"])
         .creation_flags(0x08000000)
         .output()
         .expect("Failed to execute wmic command");
@@ -29,16 +29,16 @@ pub fn get_device_id() -> String {
 
 #[cfg(target_os = "macos")]
 pub fn get_device_id() -> String {
-    let output = Command::new("ioreg")
-        .args(["-d2", "-c", "IOPlatformExpertDevice"])
+    let output = Command::new("system_profiler")
+        .args(["SPHardwareDataType"])
         .output()
-        .expect("Failed to execute ioreg command");
+        .expect("Failed to execute system_profiler command");
 
     let output_str = String::from_utf8_lossy(&output.stdout);
     output_str
         .lines()
-        .find(|line| line.contains("IOPlatformUUID"))
-        .and_then(|line| line.split('"').nth(3))
+        .find(|line| line.contains("Serial Number"))
+        .and_then(|line| line.split_whitespace().nth(3))
         .unwrap_or("unknown")
         .to_string()
 }
