@@ -21,6 +21,12 @@ interface JournalContextType {
   saveNote: (title: string, subtitle: string, content: string) => Promise<void>;
   loadNotes: () => Promise<void>;
   deleteNote: (noteId: string) => Promise<void>;
+  editNote: (
+    noteId: string,
+    title: string,
+    subtitle: string,
+    content: string
+  ) => Promise<void>;
 }
 
 const STORAGE_KEY = "bruma-notes";
@@ -88,6 +94,37 @@ export function JournalProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const editNote = async (
+    noteId: string,
+    title: string,
+    subtitle: string,
+    content: string
+  ) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const updatedNotes = notes.map((note) => {
+        if (note.created_at === noteId) {
+          return {
+            ...note,
+            title,
+            subtitle,
+            content,
+            updated_at: new Date().toISOString(),
+          };
+        }
+        return note;
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedNotes));
+      setNotes(updatedNotes);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to edit note");
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <JournalContext.Provider
       value={{
@@ -97,6 +134,7 @@ export function JournalProvider({ children }: { children: ReactNode }) {
         saveNote,
         loadNotes,
         deleteNote,
+        editNote,
       }}
     >
       {children}

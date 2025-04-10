@@ -20,7 +20,7 @@ export function CollectionPage() {
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Your Notes</h1>
-        <Button onClick={() => navigate("/write")}>
+        <Button onClick={() => navigate("/collection/new")}>
           <Plus className="h-4 w-4 mr-2" />
           New Note
         </Button>

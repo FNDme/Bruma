@@ -1,11 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
 import {
-  Pencil,
   BookOpen,
   Settings,
-  CheckCircle,
   ChevronLeft,
   ChevronRight,
+  Key,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -32,11 +32,6 @@ const navigationItems: NavigationGroup[] = [
     label: "Journal",
     items: [
       {
-        label: "Write",
-        path: "/write",
-        icon: <Pencil className="mr-2 h-4 w-4" />,
-      },
-      {
         label: "Collection",
         path: "/collection",
         icon: <BookOpen className="mr-2 h-4 w-4" />,
@@ -49,7 +44,12 @@ const navigationItems: NavigationGroup[] = [
       {
         label: "System Checks",
         path: "/system-checks",
-        icon: <CheckCircle className="mr-2 h-4 w-4" />,
+        icon: <ShieldCheck className="mr-2 h-4 w-4" />,
+      },
+      {
+        label: "Password Generator",
+        path: "/password-generator",
+        icon: <Key className="mr-2 h-4 w-4" />,
       },
     ],
   },

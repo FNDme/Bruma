@@ -12,6 +12,7 @@ import { DeviceProvider } from "./contexts/DeviceContext";
 import SystemChecksPage from "./pages/SystemChecksPage";
 import { SystemChecksProvider } from "./contexts/SystemChecksContext";
 import { UserCredentialsProvider } from "./contexts/UserCredentialsContext";
+import PasswordGeneratorPage from "./pages/PasswordGeneratorPage";
 
 function App() {
   return (
@@ -27,12 +28,20 @@ function App() {
                       path="/"
                       element={<Navigate to="/write" replace />}
                     />
-                    <Route path="/write" element={<WritePage />} />
                     <Route path="/collection" element={<CollectionPage />} />
+                    <Route path="/collection/new" element={<WritePage />} />
                     <Route path="/collection/:noteId" element={<NotePage />} />
+                    <Route
+                      path="/collection/:noteId/edit"
+                      element={<WritePage />}
+                    />
                     <Route
                       path="/system-checks"
                       element={<SystemChecksPage />}
+                    />
+                    <Route
+                      path="/password-generator"
+                      element={<PasswordGeneratorPage />}
                     />
                     <Route path="/settings" element={<SettingsPage />} />
                   </Routes>
