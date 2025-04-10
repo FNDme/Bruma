@@ -7,6 +7,8 @@ import {
   Key,
   ShieldCheck,
   Lock,
+  Dices,
+  SquarePercent,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -56,6 +58,21 @@ const navigationItems: NavigationGroup[] = [
         label: "Password Generator",
         path: "/password-generator",
         icon: <Key className="mr-2 h-4 w-4" />,
+      },
+    ],
+  },
+  {
+    label: "Randomizer",
+    items: [
+      {
+        label: "Dice Roller",
+        path: "/dice-roller",
+        icon: <Dices className="mr-2 h-4 w-4" />,
+      },
+      {
+        label: "Choose For Me",
+        path: "/choose-for-me",
+        icon: <SquarePercent className="mr-2 h-4 w-4" />,
       },
     ],
   },

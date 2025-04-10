@@ -15,6 +15,8 @@ import { UserCredentialsProvider } from "./contexts/UserCredentialsContext";
 import PasswordGeneratorPage from "./pages/PasswordGeneratorPage";
 import { VaultProvider } from "./contexts/VaultContext";
 import { VaultPage } from "./pages/VaultPage";
+import DiceRollerPage from "./pages/DiceRollerPage";
+import ChooseForMePage from "./pages/ChooseForMePage";
 
 function App() {
   return (
@@ -51,6 +53,11 @@ function App() {
                       />
                       <Route path="/settings" element={<SettingsPage />} />
                       <Route path="/vault" element={<VaultPage />} />
+                      <Route path="/dice-roller" element={<DiceRollerPage />} />
+                      <Route
+                        path="/choose-for-me"
+                        element={<ChooseForMePage />}
+                      />
                     </Routes>
                   </Layout>
                 </BrowserRouter>
