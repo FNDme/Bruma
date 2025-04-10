@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Key,
   ShieldCheck,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -35,6 +36,11 @@ const navigationItems: NavigationGroup[] = [
         label: "Collection",
         path: "/collection",
         icon: <BookOpen className="mr-2 h-4 w-4" />,
+      },
+      {
+        label: "Secure Vault",
+        path: "/vault",
+        icon: <Lock className="mr-2 h-4 w-4" />,
       },
     ],
   },

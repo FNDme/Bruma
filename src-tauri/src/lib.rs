@@ -1,11 +1,10 @@
 use tauri::Manager;
 mod commands;
-mod credentials;
+mod supabase_credentials;
 mod device;
 mod security;
 mod supabase;
-
-pub use credentials::SupabaseCredentials;
+mod vault_credentials;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -26,9 +25,13 @@ pub fn run() {
             security::get_screen_lock_info,
             supabase::send_security_report,
             supabase::get_last_report,
-            credentials::has_supabase_credentials,
-            credentials::remove_supabase_credentials,
-            credentials::save_supabase_credentials
+            supabase_credentials::has_supabase_credentials,
+            supabase_credentials::remove_supabase_credentials,
+            supabase_credentials::save_supabase_credentials,
+            vault_credentials::save_vault_credentials,
+            vault_credentials::get_vault_credentials,
+            vault_credentials::has_vault_credentials,
+            vault_credentials::reset_vault_credentials,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,4 +1,4 @@
-use crate::credentials;
+use crate::supabase_credentials;
 use crate::device::get_device_id;
 use chrono;
 use reqwest::Client;
@@ -45,7 +45,7 @@ pub async fn send_security_report(
     report: SecurityReport,
 ) -> Result<bool, String> {
     let device_id = get_device_id();
-    let credentials = credentials::get_supabase_credentials()
+    let credentials = supabase_credentials::get_supabase_credentials()
         .await?
         .ok_or_else(|| "Supabase credentials not configured".to_string())?;
 
@@ -92,7 +92,7 @@ pub async fn send_security_report(
 
 #[tauri::command]
 pub async fn get_last_report(user_email: String) -> Result<Option<SupabaseReport>, String> {
-    let credentials = credentials::get_supabase_credentials()
+    let credentials = supabase_credentials::get_supabase_credentials()
         .await?
         .ok_or_else(|| "Supabase credentials not configured".to_string())?;
     let device_id = get_device_id();

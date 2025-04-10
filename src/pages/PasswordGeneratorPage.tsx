@@ -87,10 +87,30 @@ const PasswordGeneratorPage: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto p-4 max-w-2xl">
+    <div className="container mx-auto p-4 max-w-4xl space-y-4">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Password Generator</h1>
+        <div className="space-x-2">
+          <Button variant="outline" onClick={() => setPassword("")}>
+            Clear
+          </Button>
+          <Button onClick={generatePassword}>
+            Generate
+            <RefreshCw className="h-4 w-4 ml-2" />
+          </Button>
+        </div>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>Password Generator</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <div>Password Settings</div>
+            {password && (
+              <span className="text-xs text-muted-foreground">
+                Strength: {getPasswordStrength()}
+              </span>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
@@ -98,9 +118,6 @@ const PasswordGeneratorPage: React.FC = () => {
               <label className="text-sm font-medium">
                 Password Length: {length}
               </label>
-              <span className="text-sm text-muted-foreground">
-                {getPasswordStrength()}
-              </span>
             </div>
             <Slider
               value={[length]}
@@ -166,9 +183,6 @@ const PasswordGeneratorPage: React.FC = () => {
               disabled={!password}
             >
               <Copy className="h-4 w-4" />
-            </Button>
-            <Button variant="default" size="icon" onClick={generatePassword}>
-              <RefreshCw className="h-4 w-4" />
             </Button>
           </div>
         </CardContent>
