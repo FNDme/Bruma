@@ -257,19 +257,13 @@ fn get_display_sleep(mode: &str) -> Option<u32> {
         .ok()?;
 
     let result = String::from_utf8_lossy(&output.stdout);
-    
-    let lines: Vec<&str> = result.lines().collect();
-    let mode_line = lines.iter().position(|line| line.contains(mode))?;
-    for line in &lines[mode_line..] {
-        if line.trim().starts_with("displaysleep") {
-            return line
-                .split_whitespace()
-                .nth(1)
-                .and_then(|time| time.parse::<u32>().ok());
-        }
-    }
-    
-    None
+    let pattern = format!("{}/displaysleep", mode);
+
+    result
+        .lines()
+        .find(|line| line.contains(&pattern))
+        .and_then(|line| line.split_whitespace().last())
+        .and_then(|time| time.parse::<u32>().ok())
 }
 
 #[cfg(target_os = "linux")]

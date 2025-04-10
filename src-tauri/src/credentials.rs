@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use keyring::Entry;
+use serde::{Deserialize, Serialize};
 use std::str;
 
 const SERVICE: &str = "bruma";
@@ -28,9 +28,7 @@ pub async fn get_supabase_credentials() -> Result<Option<SupabaseCredentials>, S
 }
 
 #[tauri::command]
-pub async fn save_supabase_credentials(
-    request: SupabaseCredentials,
-) -> Result<(), String> {
+pub async fn save_supabase_credentials(request: SupabaseCredentials) -> Result<(), String> {
     let serialized = serde_json::to_string(&request).map_err(|e| e.to_string())?;
     let entry = Entry::new(SERVICE, USERNAME).map_err(|e| e.to_string())?;
     if let Err(e) = entry.set_secret(serialized.as_bytes()) {

@@ -1,5 +1,5 @@
 #[cfg(target_os = "windows")]
-use { std::process::Command, std::os::windows::process::CommandExt };
+use {std::os::windows::process::CommandExt, std::process::Command};
 
 #[cfg(target_os = "macos")]
 use std::process::Command;

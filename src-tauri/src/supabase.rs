@@ -1,9 +1,9 @@
+use crate::credentials;
 use crate::device::get_device_id;
 use chrono;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tauri_plugin_os::{platform, version};
-use crate::credentials;
 
 #[derive(Serialize, Deserialize)]
 pub struct SecurityReport {
@@ -66,7 +66,10 @@ pub async fn send_security_report(
 
     let client = Client::new();
     let response = client
-        .patch(&format!("{}/rest/v1/security_reports?device_id=eq.{}&on_conflict=user_email,device_id", credentials.url, device_id))
+        .patch(&format!(
+            "{}/rest/v1/security_reports?device_id=eq.{}&on_conflict=user_email,device_id",
+            credentials.url, device_id
+        ))
         .header("apikey", &credentials.anon_key)
         .header("Authorization", &format!("Bearer {}", credentials.anon_key))
         .header("Content-Type", "application/json")
@@ -105,7 +108,8 @@ pub async fn get_last_report(user_email: String) -> Result<Option<SupabaseReport
 
     if response.status().is_success() {
         let body = response.text().await.unwrap_or_default();
-        let reports: Vec<SupabaseReport> = serde_json::from_str(&body).map_err(|e| e.to_string())?;
+        let reports: Vec<SupabaseReport> =
+            serde_json::from_str(&body).map_err(|e| e.to_string())?;
         Ok(reports.first().cloned())
     } else {
         let error_text = response
