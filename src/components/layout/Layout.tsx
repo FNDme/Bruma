@@ -9,6 +9,7 @@ import {
   Lock,
   Dices,
   SquarePercent,
+  List,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -43,6 +44,11 @@ const navigationItems: NavigationGroup[] = [
         label: "Secure Vault",
         path: "/vault",
         icon: <Lock className="mr-2 h-4 w-4" />,
+      },
+      {
+        label: "Todo List",
+        path: "/todo",
+        icon: <List className="mr-2 h-4 w-4" />,
       },
     ],
   },

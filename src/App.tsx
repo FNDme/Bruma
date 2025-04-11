@@ -17,6 +17,8 @@ import { VaultProvider } from "./contexts/VaultContext";
 import { VaultPage } from "./pages/VaultPage";
 import DiceRollerPage from "./pages/DiceRollerPage";
 import ChooseForMePage from "./pages/ChooseForMePage";
+import { TodoProvider } from "./contexts/TodoContext";
+import TodoPage from "./pages/TodoPage";
 
 function App() {
   return (
@@ -26,41 +28,50 @@ function App() {
           <JournalProvider>
             <UserCredentialsProvider>
               <VaultProvider>
-                <BrowserRouter>
-                  <Layout>
-                    <Routes>
-                      <Route
-                        path="/"
-                        element={<Navigate to="/write" replace />}
-                      />
-                      <Route path="/collection" element={<CollectionPage />} />
-                      <Route path="/collection/new" element={<WritePage />} />
-                      <Route
-                        path="/collection/:noteId"
-                        element={<NotePage />}
-                      />
-                      <Route
-                        path="/collection/:noteId/edit"
-                        element={<WritePage />}
-                      />
-                      <Route
-                        path="/system-checks"
-                        element={<SystemChecksPage />}
-                      />
-                      <Route
-                        path="/password-generator"
-                        element={<PasswordGeneratorPage />}
-                      />
-                      <Route path="/settings" element={<SettingsPage />} />
-                      <Route path="/vault" element={<VaultPage />} />
-                      <Route path="/dice-roller" element={<DiceRollerPage />} />
-                      <Route
-                        path="/choose-for-me"
-                        element={<ChooseForMePage />}
-                      />
-                    </Routes>
-                  </Layout>
-                </BrowserRouter>
+                <TodoProvider>
+                  <BrowserRouter>
+                    <Layout>
+                      <Routes>
+                        <Route
+                          path="/"
+                          element={<Navigate to="/write" replace />}
+                        />
+                        <Route
+                          path="/collection"
+                          element={<CollectionPage />}
+                        />
+                        <Route path="/collection/new" element={<WritePage />} />
+                        <Route
+                          path="/collection/:noteId"
+                          element={<NotePage />}
+                        />
+                        <Route
+                          path="/collection/:noteId/edit"
+                          element={<WritePage />}
+                        />
+                        <Route
+                          path="/system-checks"
+                          element={<SystemChecksPage />}
+                        />
+                        <Route
+                          path="/password-generator"
+                          element={<PasswordGeneratorPage />}
+                        />
+                        <Route path="/settings" element={<SettingsPage />} />
+                        <Route path="/vault" element={<VaultPage />} />
+                        <Route
+                          path="/dice-roller"
+                          element={<DiceRollerPage />}
+                        />
+                        <Route
+                          path="/choose-for-me"
+                          element={<ChooseForMePage />}
+                        />
+                        <Route path="/todo" element={<TodoPage />} />
+                      </Routes>
+                    </Layout>
+                  </BrowserRouter>
+                </TodoProvider>
               </VaultProvider>
             </UserCredentialsProvider>
           </JournalProvider>
