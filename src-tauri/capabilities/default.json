@@ -8,6 +8,13 @@
     "core:window:allow-set-min-size",
     "opener:default",
     "os:default",
-    "store:default"
+    "store:default",
+    "stronghold:allow-initialize",
+    "stronghold:allow-create-client",
+    "stronghold:allow-load-client",
+    "stronghold:allow-save",
+    "stronghold:allow-save-store-record",
+    "stronghold:allow-get-store-record",
+    "stronghold:allow-remove-store-record"
   ]
 }

@@ -1,5 +1,5 @@
-use crate::supabase_credentials;
 use crate::device::get_device_id;
+use crate::supabase_credentials;
 use chrono;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
