@@ -126,57 +126,55 @@ export default function TodoPage() {
           <Button type="submit">Add</Button>
         </form>
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              {activeTodos.map((todo) => (
-                <TodoItem key={todo.id} todo={todo} />
-              ))}
-            </div>
-
-            {completedTodos.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Button
-                    variant="ghost"
-                    className="flex items-center gap-2 transition-colors duration-200"
-                    onClick={() => setShowCompleted(!showCompleted)}
-                  >
-                    <span className="text-muted-foreground">
-                      Completed ({completedTodos.length})
-                    </span>
-                    <div className="transition-transform duration-200">
-                      {showCompleted ? (
-                        <ChevronUp className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
-                      )}
-                    </div>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-muted-foreground hover:text-destructive transition-colors duration-200"
-                    onClick={clearCompleted}
-                  >
-                    Clear Completed
-                  </Button>
-                </div>
-
-                <div
-                  className={`space-y-2 transition-all duration-300 ease-in-out ${
-                    showCompleted
-                      ? "opacity-100 translate-y-0"
-                      : "opacity-0 -translate-y-2"
-                  }`}
-                >
-                  {completedTodos.map((todo) => (
-                    <TodoItem key={todo.id} todo={todo} />
-                  ))}
-                </div>
-              </div>
-            )}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            {activeTodos.map((todo) => (
+              <TodoItem key={todo.id} todo={todo} />
+            ))}
           </div>
+
+          {completedTodos.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="ghost"
+                  className="flex items-center gap-2 transition-colors duration-200"
+                  onClick={() => setShowCompleted(!showCompleted)}
+                >
+                  <span className="text-muted-foreground">
+                    Completed ({completedTodos.length})
+                  </span>
+                  <div className="transition-transform duration-200">
+                    {showCompleted ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </div>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-destructive transition-colors duration-200"
+                  onClick={clearCompleted}
+                >
+                  Clear Completed
+                </Button>
+              </div>
+
+              <div
+                className={`space-y-2 transition-all duration-300 ease-in-out ${
+                  showCompleted
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 -translate-y-2"
+                }`}
+              >
+                {completedTodos.map((todo) => (
+                  <TodoItem key={todo.id} todo={todo} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </PageLayout>

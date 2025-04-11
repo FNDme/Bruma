@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 
 interface PageLayoutProps {
   title: string;
@@ -15,6 +15,7 @@ export function PageLayout({
   headerActions,
   maxWidth = "4xl",
 }: PageLayoutProps) {
+  const [isScrolled, setIsScrolled] = useState(false);
   const maxWidthClasses = {
     sm: "max-w-sm",
     md: "max-w-md",
@@ -25,20 +26,36 @@ export function PageLayout({
     full: "max-w-full",
   };
 
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 0);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
-    <div className="h-full flex flex-col pt-16 px-16">
-      <div
-        className={`flex w-full justify-between items-center ${maxWidthClasses[maxWidth]} mx-auto`}
-      >
-        <h1 className="text-2xl font-bold">{title}</h1>
-        {headerActions && (
-          <div className="flex items-center gap-2">{headerActions}</div>
-        )}
+    <div className="h-full flex flex-col">
+      <div className="sticky top-0 z-10 bg-background transition-shadow duration-200 pb-4 border-b border-border mb-4">
+        <div className="pt-16 px-16">
+          <div
+            className={`w-full items-center ${maxWidthClasses[maxWidth]} mx-auto`}
+          >
+            <div className={`flex w-full justify-between items-center`}>
+              <h1 className="text-2xl h-9 font-bold">{title}</h1>
+              {headerActions && (
+                <div className="flex items-center gap-2">{headerActions}</div>
+              )}
+            </div>
+            {subtitle && <p className="text-muted-foreground">{subtitle}</p>}
+          </div>
+        </div>
+        {isScrolled && <div className="h-px bg-border w-full" />}
       </div>
-      {subtitle && <p className="text-muted-foreground">{subtitle}</p>}
-      <div className="flex-1 w-full overflow-hidden mt-6">
+      <div className="flex-1 w-full">
         <div
-          className={`w-full h-full space-y-4 ${maxWidthClasses[maxWidth]} mx-auto`}
+          className={`w-full h-full space-y-4 ${maxWidthClasses[maxWidth]} mx-auto px-16 pb-16`}
         >
           {children}
         </div>

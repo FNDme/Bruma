@@ -20,6 +20,9 @@ import ChooseForMePage from "./pages/ChooseForMePage";
 import { TodoProvider } from "./contexts/TodoContext";
 import TodoPage from "./pages/TodoPage";
 import WelcomePage from "./pages/WelcomePage";
+import { RoutineProvider } from "./contexts/RoutineContext";
+import RoutinePage from "./pages/RoutinePage";
+import ManageRoutinesPage from "./pages/ManageRoutinesPage";
 
 function App() {
   return (
@@ -30,45 +33,55 @@ function App() {
             <UserCredentialsProvider>
               <VaultProvider>
                 <TodoProvider>
-                  <BrowserRouter>
-                    <Layout>
-                      <Routes>
-                        <Route path="/" element={<WelcomePage />} />
-                        <Route
-                          path="/collection"
-                          element={<CollectionPage />}
-                        />
-                        <Route path="/collection/new" element={<WritePage />} />
-                        <Route
-                          path="/collection/:noteId"
-                          element={<NotePage />}
-                        />
-                        <Route
-                          path="/collection/:noteId/edit"
-                          element={<WritePage />}
-                        />
-                        <Route
-                          path="/system-checks"
-                          element={<SystemChecksPage />}
-                        />
-                        <Route
-                          path="/password-generator"
-                          element={<PasswordGeneratorPage />}
-                        />
-                        <Route path="/settings" element={<SettingsPage />} />
-                        <Route path="/vault" element={<VaultPage />} />
-                        <Route
-                          path="/dice-roller"
-                          element={<DiceRollerPage />}
-                        />
-                        <Route
-                          path="/choose-for-me"
-                          element={<ChooseForMePage />}
-                        />
-                        <Route path="/todo" element={<TodoPage />} />
-                      </Routes>
-                    </Layout>
-                  </BrowserRouter>
+                  <RoutineProvider>
+                    <BrowserRouter>
+                      <Layout>
+                        <Routes>
+                          <Route path="/" element={<WelcomePage />} />
+                          <Route
+                            path="/collection"
+                            element={<CollectionPage />}
+                          />
+                          <Route
+                            path="/collection/new"
+                            element={<WritePage />}
+                          />
+                          <Route
+                            path="/collection/:noteId"
+                            element={<NotePage />}
+                          />
+                          <Route
+                            path="/collection/:noteId/edit"
+                            element={<WritePage />}
+                          />
+                          <Route
+                            path="/system-checks"
+                            element={<SystemChecksPage />}
+                          />
+                          <Route
+                            path="/password-generator"
+                            element={<PasswordGeneratorPage />}
+                          />
+                          <Route path="/settings" element={<SettingsPage />} />
+                          <Route path="/vault" element={<VaultPage />} />
+                          <Route
+                            path="/dice-roller"
+                            element={<DiceRollerPage />}
+                          />
+                          <Route
+                            path="/choose-for-me"
+                            element={<ChooseForMePage />}
+                          />
+                          <Route path="/todo" element={<TodoPage />} />
+                          <Route path="/routines" element={<RoutinePage />} />
+                          <Route
+                            path="/routines/manage"
+                            element={<ManageRoutinesPage />}
+                          />
+                        </Routes>
+                      </Layout>
+                    </BrowserRouter>
+                  </RoutineProvider>
                 </TodoProvider>
               </VaultProvider>
             </UserCredentialsProvider>
