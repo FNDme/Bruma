@@ -36,7 +36,7 @@ export function PageLayout({
   }, []);
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col overflow-y-scroll [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/50 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-button]:hidden">
       <div className="sticky top-0 z-10 bg-background transition-shadow duration-200 pb-4 border-b border-border mb-4">
         <div className="pt-16 px-16">
           <div
