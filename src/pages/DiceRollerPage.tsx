@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { PageLayout } from "@/components/layout/PageLayout";
 
 export default function DiceRollerPage() {
   const [diceType, setDiceType] = useState("d20");
@@ -22,11 +23,8 @@ export default function DiceRollerPage() {
   };
 
   return (
-    <div className="container mx-auto p-4">
-      <Card className="max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle>Dice Roller</CardTitle>
-        </CardHeader>
+    <PageLayout title="Dice Roller">
+      <Card>
         <CardContent>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -97,6 +95,6 @@ export default function DiceRollerPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageLayout>
   );
 }

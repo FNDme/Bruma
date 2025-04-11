@@ -1,6 +1,6 @@
 import "./App.css";
 import "./styles/editor.css";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { WritePage } from "./pages/WritePage";
 import { CollectionPage } from "./pages/CollectionPage";
@@ -19,6 +19,7 @@ import DiceRollerPage from "./pages/DiceRollerPage";
 import ChooseForMePage from "./pages/ChooseForMePage";
 import { TodoProvider } from "./contexts/TodoContext";
 import TodoPage from "./pages/TodoPage";
+import WelcomePage from "./pages/WelcomePage";
 
 function App() {
   return (
@@ -32,10 +33,7 @@ function App() {
                   <BrowserRouter>
                     <Layout>
                       <Routes>
-                        <Route
-                          path="/"
-                          element={<Navigate to="/write" replace />}
-                        />
+                        <Route path="/" element={<WelcomePage />} />
                         <Route
                           path="/collection"
                           element={<CollectionPage />}

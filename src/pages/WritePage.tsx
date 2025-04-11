@@ -8,6 +8,7 @@ import { Save } from "lucide-react";
 import { useState, ChangeEvent, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useJournal } from "@/contexts/JournalContext";
+import { PageLayout } from "@/components/layout/PageLayout";
 
 export function WritePage() {
   const { noteId } = useParams<{ noteId: string }>();
@@ -74,21 +75,24 @@ export function WritePage() {
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex justify-end items-center gap-2 mb-4">
-        <EditorToolbar editor={editor} />
-        <Button
-          variant="default"
-          size="sm"
-          disabled={isSaving}
-          className="ml-2"
-          onClick={() => setShowSaveDialog(true)}
-        >
-          <Save className="h-4 w-4 mr-2" />
-          {isSaving ? "Saving..." : "Save"}
-        </Button>
-      </div>
-      <div className="flex-1 flex flex-col gap-4">
+    <PageLayout
+      title={noteId ? "Edit Note" : "New Note"}
+      headerActions={
+        <div className="flex items-center gap-2">
+          <EditorToolbar editor={editor} />
+          <Button
+            variant="default"
+            size="sm"
+            disabled={isSaving}
+            onClick={() => setShowSaveDialog(true)}
+          >
+            <Save className="h-4 w-4 mr-2" />
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </div>
+      }
+    >
+      <div className="flex flex-col gap-4 h-full overflow-hidden pb-16">
         <input
           placeholder="Title"
           value={title}
@@ -101,10 +105,10 @@ export function WritePage() {
           onChange={handleSubtitleChange}
           className="text-lg text-muted-foreground border rounded-md bg-transparent p-4 focus:outline-none"
         />
-        <div className="flex-1 overflow-auto border rounded-md bg-transparent">
+        <div className="flex-1 overflow-auto border rounded-md bg-transparent min-h-0">
           <EditorContent
             editor={editor}
-            className="prose prose-sm max-w-none dark:prose-invert focus:outline-none min-h-[200px] p-4"
+            className="prose prose-sm max-w-none dark:prose-invert focus:outline-none p-4"
           />
         </div>
       </div>
@@ -131,6 +135,6 @@ export function WritePage() {
           </div>
         </div>
       )}
-    </div>
+    </PageLayout>
   );
 }

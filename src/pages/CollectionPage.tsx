@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { useJournal } from "@/contexts/JournalContext";
+import { PageLayout } from "@/components/layout/PageLayout";
 
 export function CollectionPage() {
   const { notes, isLoading } = useJournal();
@@ -17,14 +18,15 @@ export function CollectionPage() {
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Your Notes</h1>
+    <PageLayout
+      title="Your Notes"
+      headerActions={
         <Button onClick={() => navigate("/collection/new")}>
           <Plus className="h-4 w-4 mr-2" />
           New Note
         </Button>
-      </div>
+      }
+    >
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {notes.map((note) => (
           <div
@@ -53,6 +55,6 @@ export function CollectionPage() {
           </div>
         )}
       </div>
-    </div>
+    </PageLayout>
   );
 }

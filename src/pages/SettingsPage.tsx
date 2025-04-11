@@ -13,19 +13,16 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
+import { PageLayout } from "@/components/layout/PageLayout";
 
 export function SettingsPage() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Settings</h1>
-        <p className="text-muted-foreground">
-          Customize your application settings and preferences.
-        </p>
-      </div>
-
+    <PageLayout
+      title="Settings"
+      subtitle="Customize your application settings and preferences."
+    >
       <Card>
         <CardContent>
           <div className="flex items-center justify-between">
@@ -75,6 +72,6 @@ export function SettingsPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageLayout>
   );
 }

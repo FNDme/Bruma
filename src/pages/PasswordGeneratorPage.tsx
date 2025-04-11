@@ -3,9 +3,10 @@ import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Copy, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { PageLayout } from "@/components/layout/PageLayout";
 
 interface PasswordOptions {
   uppercase: boolean;
@@ -87,31 +88,18 @@ const PasswordGeneratorPage: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto p-4 max-w-4xl space-y-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Password Generator</h1>
+    <PageLayout
+      title="Password Generator"
+      headerActions={
         <div className="space-x-2">
-          <Button variant="outline" onClick={() => setPassword("")}>
-            Clear
-          </Button>
           <Button onClick={generatePassword}>
             Generate
             <RefreshCw className="h-4 w-4 ml-2" />
           </Button>
         </div>
-      </div>
-
+      }
+    >
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div>Password Settings</div>
-            {password && (
-              <span className="text-xs text-muted-foreground">
-                Strength: {getPasswordStrength()}
-              </span>
-            )}
-          </CardTitle>
-        </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <div className="flex justify-between items-center">
@@ -174,20 +162,27 @@ const PasswordGeneratorPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex space-x-2">
-            <Input type="text" value={password} readOnly className="flex-1" />
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={copyToClipboard}
-              disabled={!password}
-            >
-              <Copy className="h-4 w-4" />
-            </Button>
+          <div className="flex flex-col space-y-2">
+            <div className="flex items-center space-x-2">
+              <Input type="text" value={password} readOnly className="flex-1" />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={copyToClipboard}
+                disabled={!password}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            {password && (
+              <span className="text-xs text-muted-foreground">
+                Strength: {getPasswordStrength()}
+              </span>
+            )}
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageLayout>
   );
 };
 

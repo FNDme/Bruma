@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useUserCredentials } from "@/contexts/UserCredentialsContext";
 import { toast } from "sonner";
+import { PageLayout } from "@/components/layout/PageLayout";
 
 export default function SystemChecksPage() {
   const {
@@ -127,9 +128,9 @@ export default function SystemChecksPage() {
   }, [credentials.userEmail]);
 
   return (
-    <div className="container mx-auto p-4 max-w-4xl space-y-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">System Checks</h1>
+    <PageLayout
+      title="System Checks"
+      headerActions={
         <div className="space-x-2">
           <Button
             variant="outline"
@@ -145,8 +146,8 @@ export default function SystemChecksPage() {
             Run Checks
           </Button>
         </div>
-      </div>
-
+      }
+    >
       {deviceInfoError && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -260,6 +261,6 @@ export default function SystemChecksPage() {
           ) : null}
         </CardContent>
       </Card>
-    </div>
+    </PageLayout>
   );
 }

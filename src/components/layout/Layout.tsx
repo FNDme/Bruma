@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   BookOpen,
   Settings,
@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Toaster } from "@/components/ui/sonner";
 import { useState } from "react";
+import { BrumaIcon } from "@/components/icons/BrumaIcon";
+import "@/styles/fonts.css";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -41,14 +43,14 @@ const navigationItems: NavigationGroup[] = [
         icon: <BookOpen className="mr-2 h-4 w-4" />,
       },
       {
-        label: "Secure Vault",
-        path: "/vault",
-        icon: <Lock className="mr-2 h-4 w-4" />,
-      },
-      {
         label: "Todo List",
         path: "/todo",
         icon: <List className="mr-2 h-4 w-4" />,
+      },
+      {
+        label: "Secure Vault",
+        path: "/vault",
+        icon: <Lock className="mr-2 h-4 w-4" />,
       },
     ],
   },
@@ -86,6 +88,7 @@ const navigationItems: NavigationGroup[] = [
 
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
@@ -99,7 +102,13 @@ export function Layout({ children }: LayoutProps) {
         <div className="flex h-full flex-col p-4">
           <div className="flex items-center justify-end mb-4">
             {!isCollapsed && (
-              <h1 className="text-lg font-semibold absolute left-4">Bruma</h1>
+              <div
+                className="flex items-center gap-2 absolute left-4 cursor-pointer hover:text-primary transition-colors"
+                onClick={() => navigate("/")}
+              >
+                <BrumaIcon className="h-10 w-10" />
+                <h1 className="text-lg font-alfa tracking-wide">Bruma</h1>
+              </div>
             )}
             <Button
               variant="ghost"
@@ -162,7 +171,7 @@ export function Layout({ children }: LayoutProps) {
       </div>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto p-6">{children}</main>
+      <main className="flex-1 overflow-auto">{children}</main>
 
       <Toaster />
     </div>

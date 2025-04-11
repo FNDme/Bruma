@@ -57,7 +57,7 @@ export function NotePage() {
   }
 
   return (
-    <div className="h-full flex flex-col gap-4">
+    <div className="h-full flex flex-col gap-4 pt-16 px-16 max-w-4xl mx-auto">
       <div className="flex items-center justify-between">
         <Button
           variant="ghost"
@@ -106,13 +106,15 @@ export function NotePage() {
           </Dialog>
         </div>
       </div>
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold">{note.title}</h1>
-        <p className="text-muted-foreground">{note.subtitle}</p>
-      </div>
-      <div className="flex-1 overflow-auto">
-        <div className="prose prose-sm dark:prose-invert max-w-none">
-          <div dangerouslySetInnerHTML={{ __html: note.content }} />
+      <div className="h-full overflow-auto">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl font-bold">{note.title}</h1>
+          <p className="text-muted-foreground">{note.subtitle}</p>
+        </div>
+        <div className="flex-1">
+          <div className="prose prose-sm dark:prose-invert max-w-none pb-8">
+            <div dangerouslySetInnerHTML={{ __html: note.content }} />
+          </div>
         </div>
       </div>
     </div>
