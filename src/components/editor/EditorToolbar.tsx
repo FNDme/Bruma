@@ -8,6 +8,8 @@ import {
   Strikethrough,
   Underline,
   Link as LinkIcon,
+  Code,
+  Code2,
 } from "lucide-react";
 import { useState } from "react";
 import {
@@ -129,6 +131,30 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         }
       >
         <ListOrdered className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => editor.chain().focus().toggleCode().run()}
+        className={
+          editor.isActive("code") ? "!bg-primary/20 !text-primary" : ""
+        }
+        title={
+          editor.isActive("codeBlock") ? "Code Block (Active)" : "Code Block"
+        }
+      >
+        <Code2 className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => editor.chain().focus().toggleCode().run()}
+        className={
+          editor.isActive("code") ? "!bg-primary/20 !text-primary" : ""
+        }
+        title={editor.isActive("code") ? "Inline Code (Active)" : "Inline Code"}
+      >
+        <Code className="h-4 w-4" />
       </Button>
       <Button
         variant="outline"

@@ -10,6 +10,7 @@ import { useState, ChangeEvent, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useJournal } from "@/contexts/JournalContext";
 import { PageLayout } from "@/components/layout/PageLayout";
+import Code from "@tiptap/extension-code";
 
 export function WritePage() {
   const { noteId } = useParams<{ noteId: string }>();
@@ -33,6 +34,12 @@ export function WritePage() {
         placeholder: "Start writing your content here...",
         showOnlyWhenEditable: true,
         showOnlyCurrent: true,
+      }),
+      Code.configure({
+        HTMLAttributes: {
+          class:
+            "rounded-md bg-neutral-100 dark:bg-neutral-800 px-1.5 py-1 font-mono text-sm [&::before]:content-none [&::after]:content-none text-neutral-900 dark:text-neutral-200",
+        },
       }),
     ],
   });
