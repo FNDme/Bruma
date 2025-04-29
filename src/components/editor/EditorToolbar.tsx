@@ -7,16 +7,46 @@ import {
   ListOrdered,
   Strikethrough,
   Underline,
+  Link as LinkIcon,
 } from "lucide-react";
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 interface EditorToolbarProps {
   editor: Editor | null;
 }
 
 export function EditorToolbar({ editor }: EditorToolbarProps) {
+  const [linkUrl, setLinkUrl] = useState("");
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
+
   if (!editor) {
     return null;
   }
+
+  const handleAddLink = () => {
+    if (linkUrl) {
+      editor
+        .chain()
+        .focus()
+        .extendMarkRange("link")
+        .setLink({ href: linkUrl })
+        .run();
+      setLinkUrl("");
+      setShowLinkDialog(false);
+    }
+  };
+
+  const handleRemoveLink = () => {
+    editor.chain().focus().unsetLink().run();
+  };
 
   return (
     <div className="flex gap-2">
@@ -100,6 +130,50 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       >
         <ListOrdered className="h-4 w-4" />
       </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          if (editor.isActive("link")) {
+            handleRemoveLink();
+          } else {
+            setShowLinkDialog(true);
+          }
+        }}
+        className={
+          editor.isActive("link") ? "!bg-primary/20 !text-primary" : ""
+        }
+        title={editor.isActive("link") ? "Remove Link" : "Add Link"}
+      >
+        <LinkIcon className="h-4 w-4" />
+      </Button>
+
+      <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Link</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              type="url"
+              placeholder="Enter URL"
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleAddLink();
+                }
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowLinkDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddLink}>Add Link</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

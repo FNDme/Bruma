@@ -2,6 +2,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import Placeholder from "@tiptap/extension-placeholder";
+import Link from "@tiptap/extension-link";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { Button } from "@/components/ui/button";
 import { Save } from "lucide-react";
@@ -22,6 +23,12 @@ export function WritePage() {
     extensions: [
       StarterKit,
       Underline,
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          class: "text-blue-500 hover:text-blue-700 underline",
+        },
+      }),
       Placeholder.configure({
         placeholder: "Start writing your content here...",
         showOnlyWhenEditable: true,
