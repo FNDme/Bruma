@@ -92,7 +92,7 @@ export function Layout({ children }: LayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background overflow-hidden">
       {/* Sidebar */}
       <div
         className={`relative ${
