@@ -21,6 +21,7 @@ import WelcomePage from "./pages/WelcomePage";
 import { RoutineProvider } from "./contexts/RoutineContext";
 import RoutinePage from "./pages/RoutinePage";
 import ManageRoutinesPage from "./pages/ManageRoutinesPage";
+import { FolderPage } from "./pages/FolderPage";
 
 function App() {
   return (
@@ -47,6 +48,10 @@ function App() {
                         <Route
                           path="/collection/:noteId/edit"
                           element={<WritePage />}
+                        />
+                        <Route
+                          path="/collection/folder/:folderId"
+                          element={<FolderPage />}
                         />
                         <Route
                           path="/system-checks"

@@ -38,9 +38,21 @@ export function NotePage() {
   const handleDelete = async () => {
     try {
       await deleteNote(noteId!);
-      navigate("/collection");
+      if (note?.folderId) {
+        navigate(`/collection/folder/${note.folderId}`);
+      } else {
+        navigate("/collection");
+      }
     } catch (error) {
       console.error("Failed to delete note:", error);
+    }
+  };
+
+  const handleBack = () => {
+    if (note?.folderId) {
+      navigate(`/collection/folder/${note.folderId}`);
+    } else {
+      navigate("/collection");
     }
   };
 
@@ -62,7 +74,7 @@ export function NotePage() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate("/collection")}
+          onClick={handleBack}
           className="w-fit"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -88,10 +100,7 @@ export function NotePage() {
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => navigate("/collection")}
-                >
+                <Button variant="outline" onClick={handleBack}>
                   Cancel
                 </Button>
                 <Button

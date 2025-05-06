@@ -7,13 +7,15 @@ import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { Button } from "@/components/ui/button";
 import { Save } from "lucide-react";
 import { useState, ChangeEvent, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useJournal } from "@/contexts/JournalContext";
 import { PageLayout } from "@/components/layout/PageLayout";
 import Code from "@tiptap/extension-code";
 
 export function WritePage() {
   const { noteId } = useParams<{ noteId: string }>();
+  const [searchParams] = useSearchParams();
+  const folderId = searchParams.get("folderId");
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -60,16 +62,20 @@ export function WritePage() {
     try {
       const content = editor.getHTML();
       if (noteId) {
-        await editNote(noteId, title, subtitle, content);
+        await editNote(noteId, title, subtitle, content, folderId || undefined);
       } else {
-        await saveNote(title, subtitle, content);
+        await saveNote(title, subtitle, content, folderId || undefined);
       }
       // Clear the editor and navigate to collection
       editor.commands.clearContent();
       setTitle("");
       setSubtitle("");
       setShowSaveDialog(false);
-      navigate("/collection");
+      if (folderId) {
+        navigate(`/collection/folder/${folderId}`);
+      } else {
+        navigate("/collection");
+      }
     } catch (error) {
       console.error("Failed to save note:", error);
       // TODO: Show error toast
