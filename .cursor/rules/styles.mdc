@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+This project uses tailwindcss classes for styling. Avoid using any kind of css if it is reachable using tailwindcss.
+
+
+This project uses shadcn components. those components are under the folder `/src/components/ui`. If there is any missing shadcn component, install it using the next command: `npx shadcn@latest add {componentName}`.
