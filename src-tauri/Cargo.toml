@@ -1,6 +1,6 @@
 [package]
 name = "bruma"
-version = "0.1.1"
+version = "0.1.2"
 description = "A Tauri App"
 authors = ["Gabriel A. Luis Freitas <gabiluisfreitas@gmail.com>"]
 edition = "2024"
