@@ -6,6 +6,7 @@ import {
   ReactNode,
 } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { errorMessage } from "@/lib/utils";
 
 interface DeviceInfo {
   os: string;
@@ -33,9 +34,7 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
       const info = await invoke<DeviceInfo>("get_device_info");
       setDeviceInfo(info);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch device info"
-      );
+      setError(errorMessage(err, "Failed to fetch device info"));
     } finally {
       setLoading(false);
     }

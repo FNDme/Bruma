@@ -1,6 +1,29 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { readString, writeString } from "@/lib/storage";
 
-type Theme = "dark" | "light" | "system";
+export type Theme = "dark" | "light" | "system";
+export type ResolvedTheme = "dark" | "light";
+
+function isTheme(value: unknown): value is Theme {
+  return value === "dark" || value === "light" || value === "system";
+}
+
+const DARK_QUERY = "(prefers-color-scheme: dark)";
+
+function getSystemTheme(): ResolvedTheme {
+  try {
+    return window.matchMedia(DARK_QUERY).matches ? "dark" : "light";
+  } catch {
+    return "light";
+  }
+}
 
 type ThemeProviderProps = {
   children: React.ReactNode;
@@ -9,53 +32,73 @@ type ThemeProviderProps = {
 };
 
 type ThemeProviderState = {
+  /** The user's choice, possibly "system". */
   theme: Theme;
+  /** The theme actually applied ("system" resolved against the OS). */
+  resolvedTheme: ResolvedTheme;
   setTheme: (theme: Theme) => void;
 };
 
-const initialState: ThemeProviderState = {
-  theme: "system",
-  setTheme: () => null,
-};
-
-const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
+const ThemeProviderContext = createContext<ThemeProviderState | undefined>(
+  undefined
+);
 
 export function ThemeProvider({
   children,
   defaultTheme = "system",
   storageKey = "bruma-theme",
-  ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
-  );
+  const [theme, setThemeState] = useState<Theme>(() => {
+    const stored = readString(storageKey);
+    return isTheme(stored) ? stored : defaultTheme;
+  });
+  const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(getSystemTheme);
+
+  // Follow OS appearance changes. Only matters while theme === "system", but
+  // tracking it always keeps resolvedTheme correct the moment the user switches.
+  useEffect(() => {
+    let media: MediaQueryList;
+    try {
+      media = window.matchMedia(DARK_QUERY);
+    } catch {
+      return;
+    }
+    const onChange = (event: MediaQueryListEvent) =>
+      setSystemTheme(event.matches ? "dark" : "light");
+    setSystemTheme(media.matches ? "dark" : "light");
+    if (typeof media.addEventListener === "function") {
+      media.addEventListener("change", onChange);
+      return () => media.removeEventListener("change", onChange);
+    }
+    // Older WebKit (Safari < 14 based webviews)
+    media.addListener(onChange);
+    return () => media.removeListener(onChange);
+  }, []);
+
+  const resolvedTheme: ResolvedTheme = theme === "system" ? systemTheme : theme;
 
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove("light", "dark");
+    root.classList.add(resolvedTheme);
+    root.style.colorScheme = resolvedTheme;
+  }, [resolvedTheme]);
 
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "dark"
-        : "light";
-      root.classList.add(systemTheme);
-      return;
-    }
-
-    root.classList.add(theme);
-  }, [theme]);
-
-  const value = {
-    theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
-      setTheme(theme);
+  const setTheme = useCallback(
+    (next: Theme) => {
+      writeString(storageKey, next);
+      setThemeState(next);
     },
-  };
+    [storageKey]
+  );
+
+  const value = useMemo(
+    () => ({ theme, resolvedTheme, setTheme }),
+    [theme, resolvedTheme, setTheme]
+  );
 
   return (
-    <ThemeProviderContext.Provider {...props} value={value}>
+    <ThemeProviderContext.Provider value={value}>
       {children}
     </ThemeProviderContext.Provider>
   );

@@ -3,11 +3,14 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./App.css";
 import { ThemeProvider } from "./contexts/ThemeProvider";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ThemeProvider defaultTheme="system" storageKey="bruma-theme">
-      <App />
+      <ErrorBoundary variant="screen">
+        <App />
+      </ErrorBoundary>
     </ThemeProvider>
   </React.StrictMode>
 );

@@ -1,4 +1,4 @@
-use crate::device::get_device_id;
+use crate::device;
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -11,7 +11,7 @@ pub struct DeviceInfo {
 #[tauri::command]
 pub async fn get_device_info() -> Result<DeviceInfo, String> {
     let os = tauri_plugin_os::platform().to_string();
-    let device_id = get_device_id();
+    let device_id = device::device_id().await?;
 
     Ok(DeviceInfo {
         os,

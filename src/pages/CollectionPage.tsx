@@ -1,13 +1,25 @@
 import { Button } from "@/components/ui/button";
-import { Plus, FolderPlus, ChevronRight, Trash } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { format } from "date-fns";
-import { useJournal } from "@/contexts/JournalContext";
+import { Plus, FolderPlus } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { Folder, Note, useJournal } from "@/contexts/JournalContext";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { useState } from "react";
-import { CreateFolderDialog } from "@/components/CreateFolderDialog";
+import { useEffect, useState } from "react";
+import {
+  CreateFolderDialog,
+  RenameFolderDialog,
+} from "@/components/CreateFolderDialog";
 import { DeleteFolderDialog } from "@/components/DeleteFolderDialog";
-import { Folder } from "@/contexts/JournalContext";
+import { FolderGrid } from "@/components/journal/FolderGrid";
+import { NoteCard } from "@/components/journal/NoteCard";
+import { MoveNoteDialog } from "@/components/journal/MoveNoteDialog";
+import { JournalErrorAlert } from "@/components/journal/JournalErrorAlert";
+import {
+  JournalSearchInput,
+  JournalSearchResults,
+  useSearchQueryParam,
+} from "@/components/journal/JournalSearch";
+import { readHighlightState } from "@/hooks/useLocationHighlight";
 
 export function CollectionPage() {
   const {
@@ -15,16 +27,27 @@ export function CollectionPage() {
     folders,
     isLoading,
     createFolder,
+    moveNote,
     getSubfolders,
-    getFolderPath,
-    deleteFolder,
     deleteFolderDialog,
     openDeleteFolderDialog,
     closeDeleteFolderDialog,
   } = useJournal();
   const navigate = useNavigate();
   const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
-  const [currentFolder, setCurrentFolder] = useState<Folder | undefined>();
+  const [renaming, setRenaming] = useState<Folder | null>(null);
+  const [moving, setMoving] = useState<Note | null>(null);
+  const [query, setQuery] = useSearchQueryParam();
+  const location = useLocation();
+
+  // "New folder" from the command palette.
+  const focusTarget = readHighlightState(location.state).focus;
+  useEffect(() => {
+    if (focusTarget === "new-folder") {
+      setShowCreateFolderDialog(true);
+      navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+    }
+  }, [focusTarget, location.key, location.pathname, location.search, navigate]);
 
   if (isLoading) {
     return (
@@ -34,38 +57,30 @@ export function CollectionPage() {
     );
   }
 
-  const handleCreateFolder = async (name: string, parentId?: string) => {
-    await createFolder(name, parentId);
-  };
+  const rootFolders = getSubfolders(undefined);
+  const unfiledNotes = notes.filter((note) => !note.folderId);
 
-  const handleFolderClick = (folder: Folder) => {
-    setCurrentFolder(folder);
-    navigate(`/collection/folder/${folder.id}`);
+  const handleDropNote = async (noteId: string, folder: Folder) => {
+    try {
+      await moveNote(noteId, folder.id);
+      toast.success(`Moved to ${folder.name}`);
+    } catch (err) {
+      toast.error("Couldn't move note", {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    }
   };
-
-  const currentSubfolders = getSubfolders(currentFolder?.id);
-  const currentNotes = notes.filter(
-    (note) => note.folderId === currentFolder?.id
-  );
 
   return (
     <PageLayout
-      title={currentFolder ? currentFolder.name : "Your Notes"}
+      title="Your Notes"
       headerActions={
         <div className="flex gap-2">
           <Button onClick={() => setShowCreateFolderDialog(true)}>
             <FolderPlus className="h-4 w-4 mr-2" />
             New Folder
           </Button>
-          <Button
-            onClick={() =>
-              navigate(
-                `/collection/new${
-                  currentFolder ? `?folderId=${currentFolder.id}` : ""
-                }`
-              )
-            }
-          >
+          <Button onClick={() => navigate("/collection/new")}>
             <Plus className="h-4 w-4 mr-2" />
             New Note
           </Button>
@@ -73,133 +88,93 @@ export function CollectionPage() {
       }
     >
       <div className="space-y-8">
-        {/* Breadcrumb Navigation */}
-        {currentFolder && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/collection")}
-              className="h-auto p-0"
-            >
-              Collection
-            </Button>
-            {getFolderPath(currentFolder.id).map((folder, index) => (
-              <div key={folder.id} className="flex items-center gap-2">
-                <ChevronRight className="h-4 w-4" />
-                {index === getFolderPath(currentFolder.id).length - 1 ? (
-                  <span className="font-medium">{folder.name}</span>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleFolderClick(folder)}
-                    className="h-auto p-0"
-                  >
-                    {folder.name}
-                  </Button>
-                )}
-              </div>
-            ))}
-          </div>
+        <JournalErrorAlert />
+
+        {(notes.length > 0 || folders.length > 0) && (
+          <JournalSearchInput value={query} onChange={setQuery} />
         )}
 
-        {/* Folders Section */}
-        {currentSubfolders.length > 0 && (
+        {query.trim() ? (
+          <JournalSearchResults
+            query={query}
+            notes={notes}
+            folders={folders}
+            onOpenNote={(n) => navigate(`/collection/${n.id}`)}
+            onOpenFolder={(folder) => navigate(`/collection/folder/${folder.id}`)}
+            onMoveNote={setMoving}
+            onRenameFolder={setRenaming}
+            onDeleteFolder={openDeleteFolderDialog}
+            onDropNote={handleDropNote}
+          />
+        ) : (
+        <>
+        {rootFolders.length > 0 && (
           <div>
             <h2 className="text-lg font-semibold mb-4">Folders</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {currentSubfolders.map((folder) => (
-                <div
-                  key={folder.id}
-                  className="border rounded-lg p-4 hover:border-primary transition-colors cursor-pointer flex flex-col justify-between min-h-[100px] group"
-                  onClick={() => handleFolderClick(folder)}
-                >
-                  <div>
-                    <h3 className="text-xl font-semibold mb-2 overflow-hidden text-ellipsis whitespace-nowrap">
-                      {folder.name}
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      Created: {format(new Date(folder.created_at), "PPP")}
-                    </p>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {notes.filter((note) => note.folderId === folder.id).length}{" "}
-                    notes
-                  </p>
-                  <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openDeleteFolderDialog(folder);
-                      }}
-                    >
-                      <Trash className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <FolderGrid
+              folders={rootFolders}
+              onOpen={(folder) => navigate(`/collection/folder/${folder.id}`)}
+              onRename={setRenaming}
+              onDelete={openDeleteFolderDialog}
+              onDropNote={handleDropNote}
+            />
           </div>
         )}
 
-        {/* Notes Section */}
         <div>
           <h2 className="text-lg font-semibold mb-4">
-            {currentSubfolders.length > 0
-              ? "Notes in this Folder"
-              : "All Notes"}
+            {folders.length > 0 ? "Unfiled notes" : "Notes"}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {currentNotes.map((note) => (
-              <div
-                key={note.created_at}
-                className="border rounded-lg p-4 hover:border-primary transition-colors cursor-pointer flex flex-col justify-between min-h-[200px]"
-                onClick={() => navigate(`/collection/${note.created_at}`)}
-              >
-                <div>
-                  <h2 className="text-xl font-semibold mb-2 overflow-hidden text-ellipsis whitespace-nowrap">
-                    {note.title}
-                  </h2>
-                  <p className="text-muted-foreground mb-2 overflow-hidden text-ellipsis whitespace-nowrap">
-                    {note.subtitle}
-                  </p>
-                </div>
-                <p className="text-xs text-muted-foreground mt-4">
-                  Created: {format(new Date(note.created_at), "PPP")}
-                </p>
-              </div>
+            {unfiledNotes.map((note) => (
+              <NoteCard
+                key={note.id}
+                note={note}
+                onOpen={(n) => navigate(`/collection/${n.id}`)}
+                onMove={setMoving}
+              />
             ))}
           </div>
-          {currentNotes.length === 0 && (
+          {unfiledNotes.length === 0 && (
             <div className="text-center py-8">
               <p className="text-muted-foreground">
-                No notes in this folder yet. Start writing!
+                {notes.length === 0
+                  ? "No notes yet. Start writing!"
+                  : "Every note is in a folder."}
               </p>
             </div>
           )}
         </div>
+        </>
+        )}
       </div>
 
       <CreateFolderDialog
         open={showCreateFolderDialog}
         onOpenChange={setShowCreateFolderDialog}
-        onCreateFolder={handleCreateFolder}
-        currentFolder={currentFolder}
-        folders={folders}
+        onCreateFolder={async (name) => {
+          await createFolder(name);
+          toast.success(`Created folder "${name}"`);
+        }}
+      />
+
+      <RenameFolderDialog
+        open={renaming !== null}
+        onOpenChange={(open) => !open && setRenaming(null)}
+        folder={renaming}
+      />
+
+      <MoveNoteDialog
+        open={moving !== null}
+        onOpenChange={(open) => !open && setMoving(null)}
+        note={moving}
       />
 
       {deleteFolderDialog.folder && (
         <DeleteFolderDialog
           open={deleteFolderDialog.isOpen}
-          onOpenChange={closeDeleteFolderDialog}
-          onDelete={async () => {
-            await deleteFolder(deleteFolderDialog.folder!.id);
-          }}
+          onOpenChange={(open) => !open && closeDeleteFolderDialog()}
           folder={deleteFolderDialog.folder}
-          isLoading={isLoading}
         />
       )}
     </PageLayout>

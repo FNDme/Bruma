@@ -1,91 +1,115 @@
-import "./App.css";
 import "./styles/editor.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import {
+  createBrowserRouter,
+  Outlet,
+  RouterProvider,
+  useRouteError,
+} from "react-router-dom";
+import { lazy, Suspense, type ComponentType } from "react";
 import { Layout } from "@/components/layout/Layout";
-import { WritePage } from "./pages/WritePage";
-import { CollectionPage } from "./pages/CollectionPage";
-import { SettingsPage } from "./pages/SettingsPage";
-import { NotePage } from "./pages/NotePage";
-import { ThemeProvider } from "./contexts/ThemeProvider";
+import { RouteFallback } from "@/components/layout/RouteFallback";
 import { JournalProvider } from "./contexts/JournalContext";
 import { DeviceProvider } from "./contexts/DeviceContext";
-import SystemChecksPage from "./pages/SystemChecksPage";
 import { SystemChecksProvider } from "./contexts/SystemChecksContext";
 import { UserCredentialsProvider } from "./contexts/UserCredentialsContext";
-import PasswordGeneratorPage from "./pages/PasswordGeneratorPage";
-import DiceRollerPage from "./pages/DiceRollerPage";
-import ChooseForMePage from "./pages/ChooseForMePage";
 import { TodoProvider } from "./contexts/TodoContext";
-import TodoPage from "./pages/TodoPage";
-import WelcomePage from "./pages/WelcomePage";
 import { RoutineProvider } from "./contexts/RoutineContext";
-import RoutinePage from "./pages/RoutinePage";
-import ManageRoutinesPage from "./pages/ManageRoutinesPage";
-import { FolderPage } from "./pages/FolderPage";
+// The landing page stays in the main chunk so the first paint needs no extra
+// request; every other page is split into its own chunk and loaded on demand.
+import WelcomePage from "./pages/WelcomePage";
+
+/** React.lazy for modules that export the page under a named export. */
+function lazyNamed<M, K extends keyof M>(
+  load: () => Promise<M>,
+  name: K
+) {
+  return lazy(async () => ({
+    default: (await load())[name] as unknown as ComponentType,
+  }));
+}
+
+const WritePage = lazyNamed(() => import("./pages/WritePage"), "WritePage");
+const CollectionPage = lazyNamed(
+  () => import("./pages/CollectionPage"),
+  "CollectionPage"
+);
+const SettingsPage = lazyNamed(
+  () => import("./pages/SettingsPage"),
+  "SettingsPage"
+);
+const NotePage = lazyNamed(() => import("./pages/NotePage"), "NotePage");
+const FolderPage = lazyNamed(() => import("./pages/FolderPage"), "FolderPage");
+const SystemChecksPage = lazy(() => import("./pages/SystemChecksPage"));
+const PasswordGeneratorPage = lazy(
+  () => import("./pages/PasswordGeneratorPage")
+);
+const DiceRollerPage = lazy(() => import("./pages/DiceRollerPage"));
+const ChooseForMePage = lazy(() => import("./pages/ChooseForMePage"));
+const TodoPage = lazy(() => import("./pages/TodoPage"));
+const RoutinePage = lazy(() => import("./pages/RoutinePage"));
+const ManageRoutinesPage = lazy(() => import("./pages/ManageRoutinesPage"));
+const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
+
+function RootLayout() {
+  return (
+    <Layout>
+      {/* Inside Layout's inline ErrorBoundary, so a chunk that fails to load
+          shows the recoverable error screen while the sidebar keeps working. */}
+      <Suspense fallback={<RouteFallback />}>
+        <Outlet />
+      </Suspense>
+    </Layout>
+  );
+}
+
+// Route render errors are normally caught by the ErrorBoundary inside Layout.
+// Anything that escapes it (e.g. an error in Layout itself) is re-thrown so the
+// app-level ErrorBoundary in main.tsx shows its recovery screen instead of the
+// router's default error page.
+function RethrowRouteError(): never {
+  throw useRouteError();
+}
+
+// A data router is required for useBlocker (unsaved-changes guard in WritePage).
+const router = createBrowserRouter([
+  {
+    element: <RootLayout />,
+    errorElement: <RethrowRouteError />,
+    children: [
+      { path: "/", element: <WelcomePage /> },
+      { path: "/collection", element: <CollectionPage /> },
+      { path: "/collection/new", element: <WritePage /> },
+      { path: "/collection/:noteId", element: <NotePage /> },
+      { path: "/collection/:noteId/edit", element: <WritePage /> },
+      { path: "/collection/folder/:folderId", element: <FolderPage /> },
+      { path: "/system-checks", element: <SystemChecksPage /> },
+      { path: "/password-generator", element: <PasswordGeneratorPage /> },
+      { path: "/settings", element: <SettingsPage /> },
+      { path: "/dice-roller", element: <DiceRollerPage /> },
+      { path: "/choose-for-me", element: <ChooseForMePage /> },
+      { path: "/todo", element: <TodoPage /> },
+      { path: "/routines", element: <RoutinePage /> },
+      { path: "/routines/manage", element: <ManageRoutinesPage /> },
+      { path: "*", element: <NotFoundPage /> },
+    ],
+  },
+]);
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="system" storageKey="bruma-theme">
-      <SystemChecksProvider>
-        <DeviceProvider>
-          <JournalProvider>
-            <UserCredentialsProvider>
-              <TodoProvider>
-                <RoutineProvider>
-                  <BrowserRouter>
-                    <Layout>
-                      <Routes>
-                        <Route path="/" element={<WelcomePage />} />
-                        <Route
-                          path="/collection"
-                          element={<CollectionPage />}
-                        />
-                        <Route path="/collection/new" element={<WritePage />} />
-                        <Route
-                          path="/collection/:noteId"
-                          element={<NotePage />}
-                        />
-                        <Route
-                          path="/collection/:noteId/edit"
-                          element={<WritePage />}
-                        />
-                        <Route
-                          path="/collection/folder/:folderId"
-                          element={<FolderPage />}
-                        />
-                        <Route
-                          path="/system-checks"
-                          element={<SystemChecksPage />}
-                        />
-                        <Route
-                          path="/password-generator"
-                          element={<PasswordGeneratorPage />}
-                        />
-                        <Route path="/settings" element={<SettingsPage />} />
-                        <Route
-                          path="/dice-roller"
-                          element={<DiceRollerPage />}
-                        />
-                        <Route
-                          path="/choose-for-me"
-                          element={<ChooseForMePage />}
-                        />
-                        <Route path="/todo" element={<TodoPage />} />
-                        <Route path="/routines" element={<RoutinePage />} />
-                        <Route
-                          path="/routines/manage"
-                          element={<ManageRoutinesPage />}
-                        />
-                      </Routes>
-                    </Layout>
-                  </BrowserRouter>
-                </RoutineProvider>
-              </TodoProvider>
-            </UserCredentialsProvider>
-          </JournalProvider>
-        </DeviceProvider>
-      </SystemChecksProvider>
-    </ThemeProvider>
+    <SystemChecksProvider>
+      <DeviceProvider>
+        <JournalProvider>
+          <UserCredentialsProvider>
+            <TodoProvider>
+              <RoutineProvider>
+                <RouterProvider router={router} />
+              </RoutineProvider>
+            </TodoProvider>
+          </UserCredentialsProvider>
+        </JournalProvider>
+      </DeviceProvider>
+    </SystemChecksProvider>
   );
 }
 

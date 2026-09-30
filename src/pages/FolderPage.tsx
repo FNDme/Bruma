@@ -1,44 +1,88 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useJournal } from "@/contexts/JournalContext";
+import { toast } from "sonner";
+import { Folder, Note, useJournal } from "@/contexts/JournalContext";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, ChevronRight, Trash } from "lucide-react";
-import { format } from "date-fns";
+import {
+  ArrowLeft,
+  Plus,
+  ChevronRight,
+  MoreHorizontal,
+  Pencil,
+  Trash,
+} from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
-import { useState } from "react";
-import { CreateFolderDialog } from "@/components/CreateFolderDialog";
+import { useMemo, useState } from "react";
+import {
+  CreateFolderDialog,
+  RenameFolderDialog,
+} from "@/components/CreateFolderDialog";
 import { DeleteFolderDialog } from "@/components/DeleteFolderDialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { FolderGrid } from "@/components/journal/FolderGrid";
+import { NoteCard } from "@/components/journal/NoteCard";
+import { MoveNoteDialog } from "@/components/journal/MoveNoteDialog";
+import { JournalErrorAlert } from "@/components/journal/JournalErrorAlert";
+import {
+  JournalSearchInput,
+  JournalSearchResults,
+  useSearchQueryParam,
+} from "@/components/journal/JournalSearch";
 
 export function FolderPage() {
   const { folderId } = useParams<{ folderId: string }>();
   const {
     notes,
     folders,
-    deleteFolder,
     getSubfolders,
     getFolderPath,
+    getDescendantFolderIds,
     createFolder,
+    moveNote,
     deleteFolderDialog,
     openDeleteFolderDialog,
     closeDeleteFolderDialog,
-    isLoading,
   } = useJournal();
   const navigate = useNavigate();
   const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
+  const [renaming, setRenaming] = useState<Folder | null>(null);
+  const [moving, setMoving] = useState<Note | null>(null);
+  const [query, setQuery] = useSearchQueryParam();
+
+  // Search is scoped to this folder and everything nested in it.
+  const scope = useMemo(() => {
+    if (!folderId || !query.trim()) return null;
+    const nested = getDescendantFolderIds(folderId);
+    const ids = new Set([folderId, ...nested]);
+    return {
+      folders: folders.filter((f) => nested.includes(f.id)),
+      notes: notes.filter((n) => n.folderId && ids.has(n.folderId)),
+    };
+  }, [folderId, query, folders, notes, getDescendantFolderIds]);
 
   const folder = folders.find((f) => f.id === folderId);
   const subfolders = getSubfolders(folderId);
   const folderNotes = notes.filter((note) => note.folderId === folderId);
+  const path = folderId ? getFolderPath(folderId) : [];
 
-  const handleFolderClick = (folderId: string) => {
-    navigate(`/collection/folder/${folderId}`);
-  };
+  const goToFolder = (id?: string) =>
+    navigate(id ? `/collection/folder/${id}` : "/collection");
 
-  const handleBack = () => {
-    if (folder?.parentId) {
-      const parentFolder = folders.find((f) => f.id === folder.parentId);
-      navigate(`/collection/folder/${parentFolder?.id}`);
-    } else {
-      navigate("/collection");
+  const handleBack = () => goToFolder(folder?.parentId);
+
+  const handleDropNote = async (noteId: string, target: Folder) => {
+    try {
+      await moveNote(noteId, target.id);
+      toast.success(`Moved to ${target.name}`);
+    } catch (err) {
+      toast.error("Couldn't move note", {
+        description: err instanceof Error ? err.message : undefined,
+      });
     }
   };
 
@@ -46,13 +90,15 @@ export function FolderPage() {
     return (
       <div className="h-full flex flex-col items-center justify-center">
         <h1 className="text-2xl font-bold mb-4">Folder not found</h1>
-        <Button onClick={handleBack}>
+        <Button onClick={() => navigate("/collection")}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Collection
         </Button>
       </div>
     );
   }
+
+  const deletingFolder = deleteFolderDialog.folder;
 
   return (
     <PageLayout
@@ -64,6 +110,7 @@ export function FolderPage() {
             size="sm"
             onClick={handleBack}
             className="w-fit"
+            aria-label="Back"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -83,12 +130,38 @@ export function FolderPage() {
             <Plus className="h-4 w-4 mr-2" />
             New Note
           </Button>
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" aria-label="Folder actions">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => setRenaming(folder)}>
+                <Pencil className="h-4 w-4" />
+                Rename folder
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={() => openDeleteFolderDialog(folder)}
+              >
+                <Trash className="h-4 w-4" />
+                Delete folder
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       }
     >
       <div className="space-y-8">
+        <JournalErrorAlert />
+
         {/* Breadcrumb Navigation */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <nav
+          aria-label="Breadcrumb"
+          className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground"
+        >
           <Button
             variant="ghost"
             size="sm"
@@ -97,94 +170,70 @@ export function FolderPage() {
           >
             Collection
           </Button>
-          {getFolderPath(folderId).map((folder, index) => (
-            <div key={folder.id} className="flex items-center gap-2">
+          {path.map((crumb, index) => (
+            <div key={crumb.id} className="flex items-center gap-2">
               <ChevronRight className="h-4 w-4" />
-              {index === getFolderPath(folderId).length - 1 ? (
-                <span className="font-medium">{folder.name}</span>
+              {index === path.length - 1 ? (
+                <span className="font-medium" aria-current="page">
+                  {crumb.name}
+                </span>
               ) : (
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleFolderClick(folder.id)}
+                  onClick={() => goToFolder(crumb.id)}
                   className="h-auto p-0"
                 >
-                  {folder.name}
+                  {crumb.name}
                 </Button>
               )}
             </div>
           ))}
-        </div>
+        </nav>
 
-        {/* Subfolders Section */}
+        <JournalSearchInput
+          value={query}
+          onChange={setQuery}
+          placeholder={`Search in ${folder.name}…`}
+        />
+
+        {scope ? (
+          <JournalSearchResults
+            query={query}
+            notes={scope.notes}
+            folders={scope.folders}
+            onOpenNote={(n) => navigate(`/collection/${n.id}`)}
+            onOpenFolder={(f) => goToFolder(f.id)}
+            onMoveNote={setMoving}
+            onRenameFolder={setRenaming}
+            onDeleteFolder={openDeleteFolderDialog}
+            onDropNote={handleDropNote}
+          />
+        ) : (
+        <>
         {subfolders.length > 0 && (
           <div>
             <h2 className="text-lg font-semibold mb-4">Subfolders</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {subfolders.map((subfolder) => (
-                <div
-                  key={subfolder.id}
-                  className="
-                  border rounded-lg p-4 hover:border-primary transition-colors cursor-pointer flex flex-col justify-between min-h-[100px]
-                  group
-                  "
-                  onClick={() => handleFolderClick(subfolder.id)}
-                >
-                  <div>
-                    <h3 className="text-xl font-semibold mb-2 overflow-hidden text-ellipsis whitespace-nowrap">
-                      {subfolder.name}
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      Created: {format(new Date(subfolder.created_at), "PPP")}
-                    </p>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {
-                      notes.filter((note) => note.folderId === subfolder.id)
-                        .length
-                    }{" "}
-                    notes
-                  </p>
-                  <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openDeleteFolderDialog(subfolder);
-                      }}
-                    >
-                      <Trash className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <FolderGrid
+              folders={subfolders}
+              onOpen={(f) => goToFolder(f.id)}
+              onRename={setRenaming}
+              onDelete={openDeleteFolderDialog}
+              onDropNote={handleDropNote}
+            />
           </div>
         )}
 
-        {/* Notes Section */}
         <div>
           <h2 className="text-lg font-semibold mb-4">Notes</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {folderNotes.map((note) => (
-              <div
-                key={note.created_at}
-                className="border rounded-lg p-4 hover:border-primary transition-colors cursor-pointer flex flex-col justify-between min-h-[200px]"
-                onClick={() => navigate(`/collection/${note.created_at}`)}
-              >
-                <div>
-                  <h2 className="text-xl font-semibold mb-2 overflow-hidden text-ellipsis whitespace-nowrap">
-                    {note.title}
-                  </h2>
-                  <p className="text-muted-foreground mb-2 overflow-hidden text-ellipsis whitespace-nowrap">
-                    {note.subtitle}
-                  </p>
-                </div>
-                <p className="text-xs text-muted-foreground mt-4">
-                  Created: {format(new Date(note.created_at), "PPP")}
-                </p>
-              </div>
+              <NoteCard
+                key={note.id}
+                note={note}
+                onOpen={(n) => navigate(`/collection/${n.id}`)}
+                onMove={setMoving}
+              />
             ))}
           </div>
           {folderNotes.length === 0 && (
@@ -195,6 +244,8 @@ export function FolderPage() {
             </div>
           )}
         </div>
+        </>
+        )}
       </div>
 
       <CreateFolderDialog
@@ -202,21 +253,32 @@ export function FolderPage() {
         onOpenChange={setShowCreateFolderDialog}
         onCreateFolder={async (name) => {
           await createFolder(name, folderId);
-          setShowCreateFolderDialog(false);
+          toast.success(`Created folder "${name}"`);
         }}
         currentFolder={folder}
-        folders={folders}
       />
 
-      {deleteFolderDialog.folder && (
+      <RenameFolderDialog
+        open={renaming !== null}
+        onOpenChange={(open) => !open && setRenaming(null)}
+        folder={renaming}
+      />
+
+      <MoveNoteDialog
+        open={moving !== null}
+        onOpenChange={(open) => !open && setMoving(null)}
+        note={moving}
+      />
+
+      {deletingFolder && (
         <DeleteFolderDialog
           open={deleteFolderDialog.isOpen}
-          onOpenChange={closeDeleteFolderDialog}
-          onDelete={async () => {
-            await deleteFolder(deleteFolderDialog.folder!.id);
+          onOpenChange={(open) => !open && closeDeleteFolderDialog()}
+          folder={deletingFolder}
+          onDeleted={(_mode, parentId) => {
+            // Deleting the folder being viewed: go to where it used to live.
+            if (deletingFolder.id === folderId) goToFolder(parentId);
           }}
-          folder={deleteFolderDialog.folder}
-          isLoading={isLoading}
         />
       )}
     </PageLayout>

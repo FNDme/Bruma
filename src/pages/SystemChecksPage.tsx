@@ -13,11 +13,26 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@radix-ui/react-collapsible";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useUserCredentials } from "@/contexts/UserCredentialsContext";
 import { toast } from "sonner";
+import { errorMessage } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { PageLayout } from "@/components/layout/PageLayout";
+import {
+  failingChecks,
+  onAutoReportChange,
+  readAutoReportState,
+  sendSecurityReport,
+} from "@/lib/securityReport";
 
 export default function SystemChecksPage() {
   const {
@@ -31,61 +46,84 @@ export default function SystemChecksPage() {
 
   const [isReportSettingsOpen, setIsReportSettingsOpen] = useState(false);
   const [isSendingReport, setIsSendingReport] = useState(false);
+  // A manual send refetches the last report itself when it finishes
+  const isSendingRef = useRef(false);
+  isSendingRef.current = isSendingReport;
   const [lastReportDate, setLastReportDate] = useState<Date | null>(null);
+  const [lastReportError, setLastReportError] = useState<string | null>(null);
+  const [confirmFailedOpen, setConfirmFailedOpen] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    if (!credentials.userEmail || !credentials.userName) {
+  const checksInProgress = checks.some(
+    (check) => check.status === "pending" || check.status === "running"
+  );
+  // Non-compliant checks and checks that could not run are both reported as failing
+  const failedChecks = failingChecks(checks);
+
+  const sendReport = async () => {
+    isSendingRef.current = true;
+    setIsSendingReport(true);
+    const toastId = toast.loading("Sending report...");
+    try {
+      await sendSecurityReport(credentials, checks);
+      toast.success(
+        failedChecks.length > 0
+          ? "Report sent, including the failed checks"
+          : "Report sent successfully",
+        { id: toastId }
+      );
+    } catch (error) {
+      console.error(error);
+      toast.error(errorMessage(error, "Failed to send report"), {
+        id: toastId,
+      });
+    } finally {
+      setIsSendingReport(false);
+      fetchLastReport();
+    }
+  };
+
+  const handleSubmit = async (e?: React.SyntheticEvent) => {
+    e?.preventDefault();
+
+    if (checksInProgress) {
+      toast.error(
+        isRunning
+          ? "Wait for the checks to finish before sending the report"
+          : "Run the checks before sending the report"
+      );
+      return;
+    }
+
+    if (!credentials.userEmail.trim() || !credentials.userName.trim()) {
       toast.error("Please enter your email and name");
       setIsReportSettingsOpen(true);
       return;
     }
 
-    if (!(await invoke<boolean>("has_supabase_credentials"))) {
-      toast.error("Please enter your supabase credentials");
+    try {
+      if (!(await invoke<boolean>("has_supabase_credentials"))) {
+        toast.error("Please enter your supabase credentials");
+        setIsReportSettingsOpen(true);
+        return;
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error(errorMessage(error, "Failed to read Supabase credentials"));
       setIsReportSettingsOpen(true);
       return;
     }
 
-    e.preventDefault();
-    setIsSendingReport(true);
-    const toastId = toast.loading("Sending report...");
-
-    try {
-      const report = {
-        antivirus: checks.find((check) => check.id === "antivirus")?.result,
-        disk_encryption: checks.find((check) => check.id === "disk_encryption")
-          ?.result,
-        screen_lock: checks.find((check) => check.id === "screen_lock")?.result,
-      };
-
-      if (!report.antivirus || !report.disk_encryption || !report.screen_lock) {
-        toast.error("Please run all checks before sending the report", {
-          id: toastId,
-        });
-        return;
-      }
-
-      const response = await invoke<boolean>("send_security_report", {
-        userEmail: credentials.userEmail,
-        userFullName: credentials.userName,
-        report,
-      });
-
-      if (response) {
-        toast.success("Report sent successfully", { id: toastId });
-      } else {
-        toast.error("Failed to send report", { id: toastId });
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to send report",
-        { id: toastId }
-      );
-    } finally {
-      setIsSendingReport(false);
-      fetchLastReport();
+    if (failedChecks.length > 0) {
+      setConfirmFailedOpen(true);
+      return;
     }
+
+    await sendReport();
+  };
+
+  const handleConfirmSendWithFailures = async () => {
+    setConfirmFailedOpen(false);
+    await sendReport();
   };
 
   const handleRunChecks = async () => {
@@ -93,9 +131,7 @@ export default function SystemChecksPage() {
       await runChecks();
     } catch (error) {
       console.error(error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to run checks"
-      );
+      toast.error(errorMessage(error, "Failed to run checks"));
     }
   };
 
@@ -104,28 +140,55 @@ export default function SystemChecksPage() {
       resetChecks();
     } catch (error) {
       console.error(error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to reset checks"
-      );
+      toast.error(errorMessage(error, "Failed to reset checks"));
     }
   };
 
-  const fetchLastReport = async () => {
+  const lastReportRequest = useRef(0);
+  const fetchLastReport = useCallback(async () => {
+    const requestId = ++lastReportRequest.current;
+    const isCurrent = () => requestId === lastReportRequest.current;
+    // Never show the previous email's report while the new one loads
+    setLastReportDate(null);
+    setLastReportError(null);
+
+    const email = credentials.userEmail.trim();
+    if (!email) return;
+
     try {
+      if (!(await invoke<boolean>("has_supabase_credentials"))) return;
       const lastReport = await invoke<{ last_check: string } | null>(
         "get_last_report",
-        { userEmail: credentials.userEmail }
+        { userEmail: email }
       );
-      if (lastReport) {
-        setLastReportDate(new Date(lastReport.last_check));
-      }
+      if (!isCurrent()) return;
+      const date = lastReport ? new Date(lastReport.last_check) : null;
+      setLastReportDate(date && !Number.isNaN(date.getTime()) ? date : null);
     } catch (error) {
       console.error(error);
+      if (isCurrent()) {
+        setLastReportError(
+          errorMessage(error, "Failed to load the last report")
+        );
+      }
     }
-  };
-  useEffect(() => {
-    fetchLastReport();
   }, [credentials.userEmail]);
+
+  // Show a report sent in the background (automatic reporting) without a reload
+  useEffect(() => {
+    let lastSentAt = readAutoReportState().lastSentAt;
+    return onAutoReportChange(() => {
+      const next = readAutoReportState().lastSentAt;
+      if (next !== lastSentAt && !isSendingRef.current) fetchLastReport();
+      lastSentAt = next;
+    });
+  }, [fetchLastReport]);
+
+  useEffect(() => {
+    // Debounced so typing an email does not query once per keystroke
+    const timer = window.setTimeout(fetchLastReport, 400);
+    return () => window.clearTimeout(timer);
+  }, [fetchLastReport]);
 
   return (
     <PageLayout
@@ -173,8 +236,13 @@ export default function SystemChecksPage() {
                   )}
                 </div>
               )}
+              {lastReportError && (
+                <p className="text-xs font-normal text-destructive">
+                  {lastReportError}
+                </p>
+              )}
             </div>
-            {timeTaken && (
+            {timeTaken !== null && (
               <span className="text-xs text-muted-foreground">
                 {timeTaken}ms
               </span>
@@ -199,10 +267,9 @@ export default function SystemChecksPage() {
             <div className="flex items-center justify-between">
               <Button
                 onClick={handleSubmit}
-                disabled={
-                  isRunning ||
-                  isSendingReport ||
-                  checks.some((check) => check.status === "pending")
+                disabled={isRunning || isSendingReport || checksInProgress}
+                title={
+                  checksInProgress ? "Run the checks first" : undefined
                 }
               >
                 Send Report
@@ -261,6 +328,51 @@ export default function SystemChecksPage() {
           ) : null}
         </CardContent>
       </Card>
+
+      <Dialog open={confirmFailedOpen} onOpenChange={setConfirmFailedOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send a report with failed checks?</DialogTitle>
+            <DialogDescription>
+              {failedChecks.length === 1
+                ? "One check did not pass or could not run."
+                : `${failedChecks.length} checks did not pass or could not run.`}{" "}
+              The report will record this device as non-compliant for:
+            </DialogDescription>
+          </DialogHeader>
+          <ul className="list-disc space-y-1 pl-6 text-sm">
+            {failedChecks.map((check) => (
+              <li key={check.id}>
+                <span className="font-medium">{check.name}</span>
+                <span className="text-muted-foreground">
+                  {" "}
+                  (
+                  {check.status === "error"
+                    ? `could not run: ${check.error ?? "unknown error"}`
+                    : check.detail ?? check.failureMessage}
+                  )
+                </span>
+              </li>
+            ))}
+          </ul>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmFailedOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleConfirmSendWithFailures}
+              disabled={isSendingReport}
+            >
+              Send anyway
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 }

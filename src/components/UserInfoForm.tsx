@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -6,13 +6,10 @@ import { useUserCredentials } from "@/contexts/UserCredentialsContext";
 
 export function UserInfoForm() {
   const { credentials, setCredentials } = useUserCredentials();
-  const [userFullName, setUserFullName] = useState("");
-  const [userEmail, setUserEmail] = useState("");
-
-  useEffect(() => {
-    setUserFullName(credentials.userName);
-    setUserEmail(credentials.userEmail);
-  }, []);
+  // Credentials are loaded synchronously by the provider, so the form can
+  // start from a snapshot of them.
+  const [userFullName, setUserFullName] = useState(credentials.userName);
+  const [userEmail, setUserEmail] = useState(credentials.userEmail);
 
   const hasChanges =
     userFullName !== credentials.userName ||

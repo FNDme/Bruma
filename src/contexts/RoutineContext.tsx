@@ -1,239 +1,522 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { RoutineTask, RoutineProgress, RoutineStats } from "../types/routine";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  RoutineFrequency,
+  RoutineStats,
+  RoutineTask,
+  RoutineTaskInput,
+  RoutineTaskPatch,
+} from "../types/routine";
 import { toast } from "sonner";
+import {
+  STORAGE_KEYS,
+  isBoolean,
+  isNumber,
+  isOptionalString,
+  isRecord,
+  isString,
+  readJson,
+  readJsonArray,
+  writeJson,
+} from "@/lib/storage";
+import {
+  PeriodKeys,
+  computeStreak,
+  currentPeriodKeys,
+  formatPeriodCount,
+  isPeriodKey,
+  isoWeekKey,
+  msUntilNextLocalMidnight,
+  parseLocalDateKey,
+  periodKey,
+} from "@/lib/routineDates";
+import { isTimeKey } from "@/lib/todoDates";
+import { defaultReminderDay, isReminderDay } from "@/lib/reminders";
+
+// ---------- storage shapes & migration ----------
+
+type StoredRoutineTask = Omit<
+  RoutineTask,
+  "createdAt" | "updatedAt" | "completions"
+> & {
+  createdAt?: unknown;
+  updatedAt?: unknown;
+  completions?: unknown;
+};
+
+/**
+ * Stored reset markers. Current format: one local period key per frequency.
+ * Legacy format (still accepted on load): { daily: UTC "YYYY-MM-DD",
+ * weekly: "YYYY-MM-DD" of a week start, monthly: 0-11 month index }.
+ */
+type LastReset = PeriodKeys;
+
+interface LegacyLastReset {
+  daily: string;
+  weekly: string;
+  monthly: number;
+}
+
+interface RoutineState {
+  tasks: RoutineTask[];
+  lastReset: LastReset;
+}
+
+const FREQUENCIES: RoutineFrequency[] = ["daily", "weekly", "monthly"];
+
+function isFrequency(value: unknown): value is RoutineFrequency {
+  return value === "daily" || value === "weekly" || value === "monthly";
+}
+
+function isStoredRoutineTask(value: unknown): value is StoredRoutineTask {
+  return (
+    isRecord(value) &&
+    isString(value.id) &&
+    isString(value.title) &&
+    isOptionalString(value.description) &&
+    isFrequency(value.frequency) &&
+    isBoolean(value.completed)
+  );
+}
+
+function isStoredLastReset(value: unknown): value is LastReset | LegacyLastReset {
+  return (
+    isRecord(value) &&
+    isString(value.daily) &&
+    isString(value.weekly) &&
+    (isString(value.monthly) || isNumber(value.monthly))
+  );
+}
+
+function toValidDate(value: unknown): Date {
+  const date =
+    typeof value === "string" || typeof value === "number"
+      ? new Date(value)
+      : new Date(NaN);
+  return Number.isNaN(date.getTime()) ? new Date() : date;
+}
+
+function normalizeCompletions(
+  frequency: RoutineFrequency,
+  value: unknown
+): string[] {
+  if (!Array.isArray(value)) return [];
+  const keys = value.filter(
+    (k): k is string => isString(k) && isPeriodKey(frequency, k)
+  );
+  return [...new Set(keys)].sort();
+}
+
+/** Convert whatever lastReset is stored (new or legacy) to local period keys. */
+function migrateLastReset(stored: unknown, now: Date): LastReset {
+  const current = currentPeriodKeys(now);
+  if (!isStoredLastReset(stored)) return current;
+
+  // Legacy data (before period keys) stored UTC dates and a month index.
+  const isLegacy =
+    isNumber(stored.monthly) || !isPeriodKey("weekly", stored.weekly);
+
+  // Daily: legacy keys were UTC dates. The old code compared them with the
+  // UTC date of "now", so a value equal to today's UTC date meant "today"
+  // even when the local date differs. Anything ahead of today is clamped so
+  // we never record a completion in the future.
+  let daily = isPeriodKey("daily", stored.daily) ? stored.daily : current.daily;
+  if (isLegacy && daily === now.toISOString().slice(0, 10)) {
+    daily = current.daily;
+  }
+  if (daily > current.daily) daily = current.daily;
+
+  // Weekly: new "YYYY-Www" keys pass through; legacy "YYYY-MM-DD" becomes the
+  // ISO week containing that date. The legacy value was the UTC date of the
+  // local Monday, which east of UTC can be the Sunday before (west of UTC it
+  // can be Tuesday, which is already in the right week), so a Sunday is moved
+  // to the following Monday.
+  let weekly = current.weekly;
+  if (isPeriodKey("weekly", stored.weekly)) {
+    weekly = stored.weekly;
+  } else {
+    const legacyDate = parseLocalDateKey(stored.weekly);
+    if (legacyDate) {
+      if (legacyDate.getDay() === 0) {
+        legacyDate.setDate(legacyDate.getDate() + 1);
+      }
+      weekly = isoWeekKey(legacyDate);
+    }
+  }
+  if (weekly > current.weekly) weekly = current.weekly;
+
+  // Monthly: legacy value was a bare month index; assume the most recent
+  // occurrence of that month (this year, or last year if it is later).
+  let monthly = current.monthly;
+  if (isString(stored.monthly) && isPeriodKey("monthly", stored.monthly)) {
+    monthly = stored.monthly;
+  } else if (
+    isNumber(stored.monthly) &&
+    stored.monthly >= 0 &&
+    stored.monthly <= 11
+  ) {
+    const year =
+      stored.monthly <= now.getMonth()
+        ? now.getFullYear()
+        : now.getFullYear() - 1;
+    monthly = `${year}-${String(stored.monthly + 1).padStart(2, "0")}`;
+  }
+  if (monthly > current.monthly) monthly = current.monthly;
+
+  return { daily, weekly, monthly };
+}
+
+/**
+ * Start a new period for every frequency whose key changed since the last
+ * reset. `completed` is re-derived from the history, so it is always true
+ * exactly when the current period is in `completions`.
+ */
+function applyResets(state: RoutineState, now = new Date()): RoutineState {
+  const keys = currentPeriodKeys(now);
+  const changed = FREQUENCIES.filter((f) => state.lastReset[f] !== keys[f]);
+  if (changed.length === 0) return state;
+
+  const stamp = new Date(now);
+  return {
+    lastReset: keys,
+    tasks: state.tasks.map((task) => {
+      if (!changed.includes(task.frequency)) return task;
+      const completed = task.completions.includes(keys[task.frequency]);
+      return completed === task.completed
+        ? task
+        : { ...task, completed, updatedAt: stamp };
+    }),
+  };
+}
+
+/** Valid reminder fields for a task of `frequency` (others are dropped). */
+function normalizeReminder(
+  frequency: RoutineFrequency,
+  reminderTime: unknown,
+  reminderDay: unknown
+): Pick<RoutineTask, "reminderTime" | "reminderDay"> {
+  if (!isTimeKey(reminderTime)) return {};
+  if (frequency === "daily") return { reminderTime };
+  return {
+    reminderTime,
+    reminderDay: isReminderDay(frequency, reminderDay)
+      ? reminderDay
+      : defaultReminderDay(frequency),
+  };
+}
+
+function loadState(now = new Date()): RoutineState {
+  const lastReset = migrateLastReset(
+    readJson<unknown>(STORAGE_KEYS.routineLastReset, null),
+    now
+  );
+
+  const tasks = readJsonArray(
+    STORAGE_KEYS.routineTasks,
+    isStoredRoutineTask
+  ).map((task): RoutineTask => {
+    let completions = normalizeCompletions(task.frequency, task.completions);
+    // Data saved before history existed: a completed task was completed in
+    // the period recorded by lastReset.
+    const periodOfFlag = lastReset[task.frequency];
+    if (
+      task.completed &&
+      task.completions === undefined &&
+      !completions.includes(periodOfFlag)
+    ) {
+      completions = [...completions, periodOfFlag].sort();
+    }
+    return {
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      frequency: task.frequency,
+      completed: task.completed,
+      completions,
+      ...normalizeReminder(task.frequency, task.reminderTime, task.reminderDay),
+      createdAt: toValidDate(task.createdAt),
+      updatedAt: toValidDate(task.updatedAt),
+    };
+  });
+
+  return applyResets({ tasks, lastReset }, now);
+}
+
+function computeStats(tasks: RoutineTask[]): RoutineStats {
+  const stats: RoutineStats = {
+    daily: { completed: 0, total: 0 },
+    weekly: { completed: 0, total: 0 },
+    monthly: { completed: 0, total: 0 },
+  };
+  tasks.forEach((task) => {
+    stats[task.frequency].total++;
+    if (task.completed) stats[task.frequency].completed++;
+  });
+  return stats;
+}
+
+const CHEER_MESSAGES = [
+  "🎉 Amazing job! You're crushing it!",
+  "🌟 You're on fire! Keep it up!",
+  "💪 That's the spirit! One step closer to your goals!",
+  "✨ You're making progress! So proud of you!",
+  "🔥 Nothing can stop you now!",
+  "🚀 You're unstoppable!",
+  "🌈 Every task completed is a step to success!",
+  "⭐️ You're shining bright today!",
+  "🎯 Bullseye! Perfect execution!",
+  "💫 You're making it look easy!",
+];
+
+// ---------- context ----------
+
+export interface DeletedRoutine {
+  task: RoutineTask;
+  index: number;
+}
 
 interface RoutineContextType {
   tasks: RoutineTask[];
-  progress: RoutineProgress[];
   stats: RoutineStats;
-  addTask: (
-    task: Omit<RoutineTask, "id" | "createdAt" | "updatedAt" | "completed">
-  ) => void;
+  addTask: (task: RoutineTaskInput) => void;
+  updateTask: (taskId: string, patch: RoutineTaskPatch) => void;
   toggleTask: (taskId: string) => void;
-  deleteTask: (taskId: string) => void;
+  /** Removes the task and returns it (with its position) so it can be restored. */
+  deleteTask: (taskId: string) => DeletedRoutine | null;
+  restoreTask: (deleted: DeletedRoutine) => void;
 }
 
 const RoutineContext = createContext<RoutineContextType | undefined>(undefined);
 
+/** How often to re-check period boundaries while the app stays open. */
+const RESET_CHECK_INTERVAL_MS = 60_000;
+
 export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [tasks, setTasks] = useState<RoutineTask[]>([]);
-  const [progress, setProgress] = useState<RoutineProgress[]>([]);
-  const [stats, setStats] = useState<RoutineStats>({
-    daily: { completed: 0, total: 0 },
-    weekly: { completed: 0, total: 0 },
-    monthly: { completed: 0, total: 0 },
-  });
-  const [lastReset, setLastReset] = useState({
-    daily: new Date().toISOString().split("T")[0],
-    weekly: getWeekStartDate(),
-    monthly: new Date().getMonth(),
-  });
+  const [state, setState] = useState<RoutineState>(() => loadState());
+  // Latest committed state, so back-to-back mutations never read stale data
+  // and side effects (toasts) run outside state updaters.
+  const stateRef = useRef(state);
 
-  // Helper function to get the start of the current week
-  function getWeekStartDate() {
-    const now = new Date();
-    const day = now.getDay();
-    const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
-    return new Date(now.setDate(diff)).toISOString().split("T")[0];
-  }
-
-  // Initial load from localStorage
-  useEffect(() => {
-    try {
-      const savedTasks = localStorage.getItem("routineTasks");
-      const savedProgress = localStorage.getItem("routineProgress");
-      const savedLastReset = localStorage.getItem("routineLastReset");
-
-      if (savedTasks) {
-        const parsedTasks = JSON.parse(savedTasks);
-        const tasksWithDates = parsedTasks.map((task: any) => ({
-          ...task,
-          createdAt: new Date(task.createdAt),
-          updatedAt: new Date(task.updatedAt),
-        }));
-        setTasks(tasksWithDates);
-      }
-      if (savedProgress) {
-        setProgress(JSON.parse(savedProgress));
-      }
-      if (savedLastReset) {
-        setLastReset(JSON.parse(savedLastReset));
-      }
-    } catch (error) {
-      console.error("Error loading from localStorage:", error);
-    }
+  const commit = useCallback((next: RoutineState) => {
+    if (next === stateRef.current) return;
+    stateRef.current = next;
+    setState(next);
   }, []);
 
-  // Handle task resets
+  const checkResets = useCallback(() => {
+    commit(applyResets(stateRef.current));
+  }, [commit]);
+
+  // Persist everything, including an empty task list.
   useEffect(() => {
-    if (tasks.length === 0) return;
+    const tasksToStore = state.tasks.map((task) => ({
+      ...task,
+      createdAt: task.createdAt.toISOString(),
+      updatedAt: task.updatedAt.toISOString(),
+    }));
+    writeJson(STORAGE_KEYS.routineTasks, tasksToStore);
+    writeJson(STORAGE_KEYS.routineLastReset, state.lastReset);
+  }, [state]);
 
-    const now = new Date();
-    const today = now.toISOString().split("T")[0];
-    const currentWeekStart = getWeekStartDate();
-    const currentMonth = now.getMonth();
+  // Reset while the app stays open: every minute, at local midnight, and
+  // whenever the window regains focus or becomes visible (e.g. after sleep).
+  useEffect(() => {
+    checkResets();
+    const interval = window.setInterval(checkResets, RESET_CHECK_INTERVAL_MS);
 
-    const newLastReset = {
-      daily: lastReset.daily !== today ? today : lastReset.daily,
-      weekly:
-        lastReset.weekly !== currentWeekStart
-          ? currentWeekStart
-          : lastReset.weekly,
-      monthly:
-        lastReset.monthly !== currentMonth ? currentMonth : lastReset.monthly,
+    let midnightTimer: number | undefined;
+    const scheduleMidnight = () => {
+      midnightTimer = window.setTimeout(() => {
+        checkResets();
+        scheduleMidnight();
+      }, msUntilNextLocalMidnight() + 500);
     };
+    scheduleMidnight();
 
-    if (JSON.stringify(newLastReset) !== JSON.stringify(lastReset)) {
-      setLastReset(newLastReset);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") checkResets();
+    };
+    window.addEventListener("focus", checkResets);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(midnightTimer);
+      window.removeEventListener("focus", checkResets);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [checkResets]);
 
-      setTasks((prev) =>
-        prev.map((task) => {
-          let shouldReset = false;
-          switch (task.frequency) {
-            case "daily":
-              shouldReset = lastReset.daily !== today;
-              break;
-            case "weekly":
-              shouldReset = lastReset.weekly !== currentWeekStart;
-              break;
-            case "monthly":
-              shouldReset = lastReset.monthly !== currentMonth;
-              break;
+  const addTask = useCallback(
+    (input: RoutineTaskInput) => {
+      const current = applyResets(stateRef.current);
+      const now = new Date();
+      const newTask: RoutineTask = {
+        id: crypto.randomUUID(),
+        title: input.title.trim(),
+        description: input.description?.trim() || undefined,
+        frequency: input.frequency,
+        completed: false,
+        completions: [],
+        ...normalizeReminder(
+          input.frequency,
+          input.reminderTime,
+          input.reminderDay
+        ),
+        createdAt: now,
+        updatedAt: now,
+      };
+      commit({ ...current, tasks: [...current.tasks, newTask] });
+    },
+    [commit]
+  );
+
+  const updateTask = useCallback(
+    (taskId: string, patch: RoutineTaskPatch) => {
+      const current = applyResets(stateRef.current);
+      commit({
+        ...current,
+        tasks: current.tasks.map((task) => {
+          if (task.id !== taskId) return task;
+          const next: RoutineTask = { ...task, updatedAt: new Date() };
+          if (patch.title !== undefined) next.title = patch.title.trim();
+          if (patch.description !== undefined)
+            next.description = patch.description.trim() || undefined;
+          if (patch.frequency && patch.frequency !== task.frequency) {
+            // Period keys are frequency-specific; history cannot carry over.
+            next.frequency = patch.frequency;
+            next.completions = [];
+            next.completed = false;
           }
-          return shouldReset
-            ? { ...task, completed: false, updatedAt: new Date() }
-            : task;
-        })
-      );
-    }
-  }, [lastReset]);
+          if (
+            patch.reminderTime !== undefined ||
+            patch.reminderDay !== undefined ||
+            next.frequency !== task.frequency
+          ) {
+            const reminder = normalizeReminder(
+              next.frequency,
+              patch.reminderTime ?? task.reminderTime,
+              patch.reminderDay ?? task.reminderDay
+            );
+            next.reminderTime = reminder.reminderTime;
+            next.reminderDay = reminder.reminderDay;
+          }
+          return next;
+        }),
+      });
+    },
+    [commit]
+  );
 
-  // Save to localStorage
-  useEffect(() => {
-    if (tasks.length === 0) return;
-
-    try {
-      const tasksToStore = tasks.map((task) => ({
-        ...task,
-        createdAt: task.createdAt.toISOString(),
-        updatedAt: task.updatedAt.toISOString(),
-      }));
-
-      localStorage.setItem("routineTasks", JSON.stringify(tasksToStore));
-      localStorage.setItem("routineProgress", JSON.stringify(progress));
-      localStorage.setItem("routineLastReset", JSON.stringify(lastReset));
-    } catch (error) {
-      console.error("Error saving to localStorage:", error);
-    }
-  }, [tasks, progress, lastReset]);
-
-  // Update stats
-  useEffect(() => {
-    const newStats: RoutineStats = {
-      daily: { completed: 0, total: 0 },
-      weekly: { completed: 0, total: 0 },
-      monthly: { completed: 0, total: 0 },
-    };
-
-    tasks.forEach((task) => {
-      newStats[task.frequency].total++;
-      if (task.completed) {
-        newStats[task.frequency].completed++;
+  const toggleTask = useCallback(
+    (taskId: string) => {
+      const now = new Date();
+      const current = applyResets(stateRef.current, now);
+      const target = current.tasks.find((t) => t.id === taskId);
+      if (!target) {
+        commit(current);
+        return;
       }
-    });
 
-    setStats(newStats);
-  }, [tasks]);
+      const key = periodKey(target.frequency, now);
+      const completed = !target.completed;
+      const completions = completed
+        ? [...new Set([...target.completions, key])].sort()
+        : target.completions.filter((k) => k !== key);
+      const updated: RoutineTask = {
+        ...target,
+        completed,
+        completions,
+        updatedAt: now,
+      };
+      const tasks = current.tasks.map((t) => (t.id === taskId ? updated : t));
+      commit({ ...current, tasks });
 
-  const addTask = (
-    taskData: Omit<RoutineTask, "id" | "createdAt" | "updatedAt" | "completed">
-  ) => {
-    const newTask: RoutineTask = {
-      ...taskData,
-      id: crypto.randomUUID(),
-      completed: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    setTasks((prev) => [...prev, newTask]);
-  };
-
-  const toggleTask = (taskId: string) => {
-    setTasks((prev) =>
-      prev.map((task) => {
-        if (task.id === taskId) {
-          const newCompleted = !task.completed;
-          if (newCompleted) {
-            // Check if this was the last task to complete
-            const willCompleteAllTasks =
-              prev.filter((t) => t.completed).length === prev.length - 1;
-
-            if (willCompleteAllTasks) {
-              toast.success(
-                "🎉🎉🎉 INCREDIBLE! You've completed ALL your tasks for today! You're absolutely amazing! 🎉🎉🎉"
-              );
-            } else {
-              const messages = [
-                "🎉 Amazing job! You're crushing it!",
-                "🌟 You're on fire! Keep it up!",
-                "💪 That's the spirit! One step closer to your goals!",
-                "✨ You're making progress! So proud of you!",
-                "🔥 Nothing can stop you now!",
-                "🚀 You're unstoppable!",
-                "🌈 Every task completed is a step to success!",
-                "⭐️ You're shining bright today!",
-                "🎯 Bullseye! Perfect execution!",
-                "💫 You're making it look easy!",
-              ];
-              const randomMessage =
-                messages[Math.floor(Math.random() * messages.length)];
-              toast.success(randomMessage);
-            }
-          }
-          return { ...task, completed: newCompleted, updatedAt: new Date() };
-        }
-        return task;
-      })
-    );
-
-    // Update progress when a task is completed
-    const today = new Date().toISOString().split("T")[0];
-    setProgress((prev) => {
-      const todayProgress = prev.find((p) => p.date === today);
-      const totalTasks = tasks.length;
-      const completedTasks =
-        tasks.filter((t) => t.completed).length +
-        (tasks.find((t) => t.id === taskId)?.completed ? -1 : 1);
-
-      if (todayProgress) {
-        return prev.map((p) =>
-          p.date === today ? { ...p, completedTasks, totalTasks } : p
+      if (!completed) return;
+      const daily = tasks.filter((t) => t.frequency === "daily");
+      const allDailyDone =
+        target.frequency === "daily" &&
+        daily.length > 0 &&
+        daily.every((t) => t.completed);
+      if (allDailyDone) {
+        toast.success(
+          "🎉🎉🎉 INCREDIBLE! You've completed ALL your daily tasks for today! You're absolutely amazing! 🎉🎉🎉"
         );
-      } else {
-        return [...prev, { date: today, completedTasks, totalTasks }];
+        return;
       }
-    });
-  };
+      const streak = computeStreak(updated.frequency, completions, now);
+      const message =
+        CHEER_MESSAGES[Math.floor(Math.random() * CHEER_MESSAGES.length)];
+      toast.success(message, {
+        description:
+          streak.current >= 2
+            ? `🔥 ${formatPeriodCount(updated.frequency, streak.current)} in a row`
+            : undefined,
+      });
+    },
+    [commit]
+  );
 
-  const deleteTask = (taskId: string) => {
-    setTasks((prev) => prev.filter((task) => task.id !== taskId));
-  };
+  const deleteTask = useCallback(
+    (taskId: string): DeletedRoutine | null => {
+      const current = stateRef.current;
+      const index = current.tasks.findIndex((t) => t.id === taskId);
+      if (index === -1) return null;
+      const task = current.tasks[index];
+      commit({
+        ...current,
+        tasks: current.tasks.filter((t) => t.id !== taskId),
+      });
+      return { task, index };
+    },
+    [commit]
+  );
+
+  const restoreTask = useCallback(
+    ({ task, index }: DeletedRoutine) => {
+      const now = new Date();
+      const current = applyResets(stateRef.current, now);
+      if (current.tasks.some((t) => t.id === task.id)) {
+        commit(current);
+        return;
+      }
+      // The period may have rolled over while the task was deleted.
+      const restored: RoutineTask = {
+        ...task,
+        completed: task.completions.includes(periodKey(task.frequency, now)),
+      };
+      const tasks = [...current.tasks];
+      tasks.splice(Math.min(index, tasks.length), 0, restored);
+      commit({ ...current, tasks });
+    },
+    [commit]
+  );
+
+  const stats = useMemo(() => computeStats(state.tasks), [state.tasks]);
+
+  const value = useMemo(
+    () => ({
+      tasks: state.tasks,
+      stats,
+      addTask,
+      updateTask,
+      toggleTask,
+      deleteTask,
+      restoreTask,
+    }),
+    [state.tasks, stats, addTask, updateTask, toggleTask, deleteTask, restoreTask]
+  );
 
   return (
-    <RoutineContext.Provider
-      value={{
-        tasks,
-        progress,
-        stats,
-        addTask,
-        toggleTask,
-        deleteTask,
-      }}
-    >
-      {children}
-    </RoutineContext.Provider>
+    <RoutineContext.Provider value={value}>{children}</RoutineContext.Provider>
   );
 };
 
